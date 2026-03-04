@@ -12,8 +12,8 @@ NAME=Clark_Wallace
 CXX = g++ 
 
 
-CXX_FLAGS = -Wall -Wextra -Wconversion -Wdouble-promotion -Wunreachable-code -Wshadow -Wpedantic
-LDFLAGS = $(shell pkg-config --libs glfw3) -lvulkan -ldl -lpthread
+CXX_FLAGS = -Wall -Wextra -Wconversion -Wdouble-promotion -Wunreachable-code -Wshadow -Wpedantic -Iexternal/glfw-3.4/include -Iexternal/Vulkan-Headers/include
+LDFLAGS = external/glfw-3.4/build/src/libglfw3.a -lvulkan -ldl -lpthread
 CPPVERSION = -std=c++17
 
 OBJECTS = $(SOURCE:.cpp=.o)

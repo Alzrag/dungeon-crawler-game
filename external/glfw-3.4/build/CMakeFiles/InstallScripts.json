@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/alzrag/dungeon-crawler-game/external/glfw-3.4/build/cmake_install.cmake",
+		"/home/alzrag/dungeon-crawler-game/external/glfw-3.4/build/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
