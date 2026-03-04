@@ -19,6 +19,8 @@ CPPVERSION = -std=c++17
 OBJECTS = $(SOURCE:.cpp=.o)
 
 ifeq ($(shell echo "Windows"), "Windows")
+	@echo "[Makefile] Checking Vulkan installation (Windows)..."
+	@powershell -ExecutionPolicy Bypass -File "$(CURDIR)/install_vulkan.ps1"
 	TARGET = $(PROJECT_NAME).exe
 	DEL = del
 	ZIPPER = tar -a -c -f
@@ -26,6 +28,9 @@ ifeq ($(shell echo "Windows"), "Windows")
 	ZIP_NAME = $(PROJECT_NAME)_$(NAME).$(ARCHIVE_EXTENSION)
 
 else
+	@echo "[Makefile] Checking Vulkan installation (Linux)..."
+	@chmod +x "$(CURDIR)/install_vulkan.sh"
+	@bash "$(CURDIR)/install_vulkan.sh"
 	TARGET = $(PROJECT_NAME)
 	DEL = rm -f
 	ZIPPER = tar -acf
