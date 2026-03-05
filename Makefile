@@ -1,9 +1,9 @@
 #project name
 PROJECT_NAME=main
 #source file location
-SOURCE= main.cpp first_app.cpp lve_window.cpp
+SOURCE= main.cpp first_app.cpp lve_window.cpp lve_pipeline.cpp
 #any additional header files you need
-H_FILES = first_app.hpp lve_window.hpp
+H_FILES = first_app.hpp lve_window.hpp lve_pipeline.hpp
 #any additional resorce files you need
 RSR_FILES = secretMessage.txt
 #your name
