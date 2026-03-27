@@ -11,6 +11,43 @@ info()  { echo -e "${cyan}[Vulkan] $*${reset}"; }
 ok()    { echo -e "${green}[Vulkan] $*${reset}"; }
 err()   { echo -e "${red}[Vulkan] ERROR: $*${reset}" >&2; exit 1; }
 
+# ── Helper: check if validation layers are present ───────────────────────────
+validation_layers_present() {
+    # Check known JSON manifest locations (this is how Vulkan actually finds layers)
+    local search_dirs=(
+        /usr/share/vulkan/explicit_layer.d
+        /usr/local/share/vulkan/explicit_layer.d
+        /etc/vulkan/explicit_layer.d
+    )
+    for dir in "${search_dirs[@]}"; do
+        if [[ -f "$dir/VkLayer_khronos_validation.json" ]]; then
+            return 0
+        fi
+    done
+
+    # Check if the actual .so exists anywhere on the system
+    if find /usr /usr/local 2>/dev/null -name "libVkLayer_khronos_validation.so*" -quit | grep -q .; then
+        return 0
+    fi
+
+    # Check via package manager as a fallback
+    if command -v dpkg &>/dev/null; then
+        if dpkg -l vulkan-validationlayers 2>/dev/null | grep -q "^ii"; then
+            return 0
+        fi
+    elif command -v rpm &>/dev/null; then
+        if rpm -q vulkan-validation-layers &>/dev/null; then
+            return 0
+        fi
+    elif command -v pacman &>/dev/null; then
+        if pacman -Q vulkan-validation-layers &>/dev/null; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
 # ── 1. Detect existing installation ──────────────────────────────────────────
 vulkan_detected=0
 
@@ -30,18 +67,22 @@ if [[ $vulkan_detected -eq 0 && -n "${VULKAN_SDK:-}" && -d "${VULKAN_SDK}" ]]; t
 fi
 
 if [[ $vulkan_detected -eq 1 ]]; then
-    ok "Vulkan is already installed. Nothing to do."
-    exit 0
+    if validation_layers_present; then
+        ok "Vulkan and validation layers already installed. Nothing to do."
+        exit 0
+    else
+        info "Vulkan found but validation layers missing — installing layers only..."
+    fi
+else
+    info "Vulkan not detected — installing via system package manager ..."
 fi
-
-info "Vulkan not detected — installing via system package manager ..."
 
 # ── 2. Detect package manager and install ────────────────────────────────────
 # Packages installed:
 #   - Vulkan runtime loader (libvulkan)
 #   - Vulkan headers         (for compilation)
 #   - Vulkan tools           (vulkaninfo, vkcube, etc.)
-#   - Validation layers      (optional but useful for development)
+#   - Validation layers      (runtime + dev)
 #   - GLSLC / glslang        (GLSL → SPIR-V compiler)
 
 if command -v apt-get &>/dev/null; then
@@ -52,6 +93,7 @@ if command -v apt-get &>/dev/null; then
         libvulkan1 \
         libvulkan-dev \
         vulkan-tools \
+        vulkan-validationlayers \
         vulkan-validationlayers-dev \
         glslang-tools \
         spirv-tools
@@ -94,7 +136,6 @@ VULKAN_SDK_PREFIX="/usr"
 # Prefer the LunarG SDK if it was installed to /opt
 for candidate in /opt/VulkanSDK /opt/vulkan-sdk; do
     if [[ -d "$candidate" ]]; then
-        # Pick the newest version sub-directory
         latest=$(ls -1 "$candidate" 2>/dev/null | sort -V | tail -1)
         [[ -n "$latest" ]] && VULKAN_SDK_PREFIX="$candidate/$latest" && break
     fi

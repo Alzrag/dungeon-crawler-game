@@ -13,10 +13,38 @@ function Write-Status($msg) { Write-Host "[Vulkan] $msg" -ForegroundColor Cyan }
 function Write-Ok($msg)     { Write-Host "[Vulkan] $msg" -ForegroundColor Green }
 function Write-Err($msg)    { Write-Host "[Vulkan] ERROR: $msg" -ForegroundColor Red; exit 1 }
 
-# 1. Detect existing installation
-# Check process env var (set by a previous run in this session)
+# ── Helper: check if validation layers are present ───────────────────────────
+function Test-ValidationLayers($sdkPath) {
+    # Most reliable: check for the layer JSON in the SDK Bin dir
+    if (Test-Path "$sdkPath\Bin\VkLayer_khronos_validation.json") { return $true }
+
+    # Also check the registry where the SDK registers explicit layers
+    $regPaths = @(
+        "HKLM:\SOFTWARE\Khronos\Vulkan\ExplicitLayers",
+        "HKCU:\SOFTWARE\Khronos\Vulkan\ExplicitLayers"
+    )
+    foreach ($reg in $regPaths) {
+        if (Test-Path $reg) {
+            $names = (Get-Item -Path $reg).Property
+            foreach ($name in $names) {
+                if ($name -like "*khronos_validation*") { return $true }
+            }
+        }
+    }
+    return $false
+}
+
+# ── Helper: set env vars for current process and exit ────────────────────────
+function Use-ExistingSDK($sdkPath) {
+    $env:VULKAN_SDK = $sdkPath
+    $binPath = "$sdkPath\Bin"
+    if ($env:PATH -notlike "*$binPath*") { $env:PATH = "$binPath;$env:PATH" }
+    $env:LIB     = "$sdkPath\Lib;$env:LIB"
+    $env:INCLUDE = "$sdkPath\Include;$env:INCLUDE"
+}
+
+# ── 1. Detect existing installation ──────────────────────────────────────────
 $sdkFromEnv = $env:VULKAN_SDK
-# Also read from persistent user-level store (set by a previous make run)
 if (-not $sdkFromEnv) {
     $sdkFromEnv = [System.Environment]::GetEnvironmentVariable("VULKAN_SDK", "User")
 }
@@ -25,26 +53,24 @@ if (-not $sdkFromEnv) {
 }
 
 if ($sdkFromEnv -and (Test-Path $sdkFromEnv)) {
-    Write-Ok "Vulkan SDK already installed at: $sdkFromEnv"
-    # Make sure current process env is populated so the linker can use it
-    $env:VULKAN_SDK = $sdkFromEnv
-    $binPath = "$sdkFromEnv\Bin"
-    if ($env:PATH -notlike "*$binPath*") { $env:PATH = "$binPath;$env:PATH" }
-    $env:LIB     = "$sdkFromEnv\Lib;$env:LIB"
-    $env:INCLUDE = "$sdkFromEnv\Include;$env:INCLUDE"
-    exit 0
+    if (Test-ValidationLayers $sdkFromEnv) {
+        Write-Ok "Vulkan SDK and validation layers already installed at: $sdkFromEnv"
+        Use-ExistingSDK $sdkFromEnv
+        exit 0
+    } else {
+        Write-Status "Vulkan SDK found at $sdkFromEnv but validation layers missing — reinstalling..."
+    }
+} elseif (Test-Path "$InstallPath\Bin\vulkan-1.dll") {
+    if (Test-ValidationLayers $InstallPath) {
+        Write-Ok "Vulkan SDK found at: $InstallPath"
+        Use-ExistingSDK $InstallPath
+        exit 0
+    } else {
+        Write-Status "Vulkan SDK found at $InstallPath but validation layers missing — reinstalling..."
+    }
 }
 
-if (Test-Path "$InstallPath\Bin\vulkan-1.dll") {
-    Write-Ok "Vulkan SDK found at: $InstallPath"
-    $env:VULKAN_SDK = $InstallPath
-    $env:PATH       = "$InstallPath\Bin;$env:PATH"
-    $env:LIB        = "$InstallPath\Lib;$env:LIB"
-    $env:INCLUDE    = "$InstallPath\Include;$env:INCLUDE"
-    exit 0
-}
-
-# 2. Download installer if not already present
+# ── 2. Download installer if not already present ──────────────────────────────
 $scriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $installerPath = Join-Path $scriptDir $InstallerName
 $downloadUrl   = "https://sdk.lunarg.com/sdk/download/$VulkanVersion/windows/$InstallerName"
@@ -68,8 +94,8 @@ if (-not (Test-Path $installerPath)) {
     Write-Status "Installer already present: $installerPath"
 }
 
-# 3. Run installer silently
-Write-Status "Installing Vulkan SDK $VulkanVersion ..."
+# ── 3. Run installer silently ─────────────────────────────────────────────────
+Write-Status "Installing Vulkan SDK $VulkanVersion (includes validation layers)..."
 $proc = Start-Process -FilePath $installerPath `
     -ArgumentList "/S", "/D=$InstallPath" `
     -Wait -PassThru
@@ -79,7 +105,7 @@ if ($proc.ExitCode -ne 0) {
 }
 Write-Ok "Installation completed."
 
-# 4. Set environment variables
+# ── 4. Set environment variables ──────────────────────────────────────────────
 Write-Status "Setting environment variables ..."
 $binPath = "$InstallPath\Bin"
 $scope   = "Machine"
@@ -93,7 +119,7 @@ try {
     Write-Ok "Environment variables set machine-wide."
 } catch {
     $scope = "User"
-    Write-Status "No admin rights - setting user-level environment variables."
+    Write-Status "No admin rights — setting user-level environment variables."
     [System.Environment]::SetEnvironmentVariable("VULKAN_SDK", $InstallPath, "User")
     $up = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     if ($up -notlike "*$binPath*") {
@@ -105,10 +131,7 @@ try {
 }
 
 # Always update current process so this build can link immediately
-$env:VULKAN_SDK = $InstallPath
-$env:PATH       = "$binPath;$env:PATH"
-$env:LIB        = "$InstallPath\Lib;$env:LIB"
-$env:INCLUDE    = "$InstallPath\Include;$env:INCLUDE"
+Use-ExistingSDK $InstallPath
 
 Write-Ok "VULKAN_SDK = $InstallPath [$scope]"
 Write-Ok "Vulkan SDK setup complete."
