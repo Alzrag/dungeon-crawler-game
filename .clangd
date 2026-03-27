@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -Iexternal/glfw-3.4/include
+    - -Iexternal/Vulkan-Headers/include
+    - -DGLFW_INCLUDE_VULKAN
