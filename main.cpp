@@ -14,6 +14,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <fstream>
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;//really dont change window size its hard
 
@@ -59,6 +60,7 @@ private:
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
   
     struct QueueFamilyIndicies {
       std::optional<uint32_t> graphicsFamily;
@@ -400,6 +402,70 @@ private:
       pickPhysicalDevice();
       createLogicalDevice();
       createSwapChain();
+      createImageViews();
+      createGraphicsPipeline();
+    }
+    
+    void createGraphicsPipeline(){
+      auto vertShaderCode=readFile("shaders/vert.spv");
+      auto fragShaderCode = readFile("shaders/frag.spv");
+
+      VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+      VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+  
+      VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+      vertShaderStageInfo.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      vertShaderStageInfo.stage=VK_SHADER_STAGE_VERTEX_BIT;
+      vertShaderStageInfo.module=vertShaderModule;
+      vertShaderStageInfo.pName="main";
+      
+      VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+      fragShaderStageInfo.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      fragShaderStageInfo.stage=VK_SHADER_STAGE_FRAGMENT_BIT;
+      fragShaderStageInfo.module=fragShaderModule;
+      fragShaderStageInfo.pName="main";
+
+      VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+      //end of function code
+      vkDestroyShaderModule(device, fragShaderModule, nullptr);
+      vkDestroyShaderModule(device, vertShaderModule, nullptr);
+    }
+
+    VkShaderModule createShaderModule(const std::vector<char>& code){
+      VkShaderModuleCreateInfo createInfo{};
+      createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+      createInfo.codeSize=code.size();
+      createInfo.pCode=reinterpret_cast<const uint32_t*>(code.data());
+      VkShaderModule shaderModule;
+      if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS){
+        throw std::runtime_error("failed to create shader module");
+      }
+
+      return shaderModule;
+    }
+
+    void createImageViews(){
+      swapChainImageViews.resize(swapChainImages.size());
+      for (size_t i = 0;i<swapChainImages.size();i++){
+        VkImageViewCreateInfo createinfo{};
+        createinfo.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createinfo.image=swapChainImages[i];
+        createinfo.viewType=VK_IMAGE_VIEW_TYPE_2D;
+        createinfo.format=swapChainImageFormat;
+        createinfo.components.r=VK_COMPONENT_SWIZZLE_IDENTITY;
+        createinfo.components.g=VK_COMPONENT_SWIZZLE_IDENTITY;
+        createinfo.components.b=VK_COMPONENT_SWIZZLE_IDENTITY;
+        createinfo.components.a=VK_COMPONENT_SWIZZLE_IDENTITY;
+        createinfo.subresourceRange.aspectMask=VK_IMAGE_ASPECT_COLOR_BIT;
+        createinfo.subresourceRange.baseMipLevel=0;
+        createinfo.subresourceRange.levelCount=1;
+        createinfo.subresourceRange.baseArrayLayer=0;
+        createinfo.subresourceRange.layerCount=1;
+        if (vkCreateImageView(device,&createinfo,nullptr,&swapChainImageViews[i]) != VK_SUCCESS){
+          throw std::runtime_error("failed to create image views");
+        }
+      }
     }
 
     void createSwapChain() {
@@ -504,6 +570,21 @@ private:
       }
     }
 
+  static std::vector<char> readFile(const std::string& filename){
+    std::ifstream file(filename,std::ios::ate | std::ios::binary);
+    if(!file.is_open()){
+      throw std::runtime_error("failed to open file");
+    }
+
+    size_t fileSize = (size_t)file.tellg();
+    std::vector<char> buffer(fileSize);
+
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    file.close();
+    return buffer;
+  }
+
     void setupDebugMessenger() {
       if (!enableValidationLayers) return;
       //we are creating a new extension here with details about the messenger and its callback based on the debug callback from earlier
@@ -534,6 +615,9 @@ private:
     }
 
     void cleanup() {
+      for (auto imageView : swapChainImageViews) {
+        vkDestroyImageView(device, imageView , nullptr);
+      }
       vkDestroySwapchainKHR(device, swapChain, nullptr);
       vkDestroyDevice(device, nullptr);
       if (enableValidationLayers){

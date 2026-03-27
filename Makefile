@@ -1,11 +1,11 @@
 #project name
 PROJECT_NAME=main
 #source file location
-SOURCE= main.cpp 
+SOURCE= main.cpp
 #any additional header files you need
 H_FILES = 
-#any additional resorce files you need
-RSR_FILES = secretMessage.txt
+#any additional resource files you need
+RSR_FILES = 
 #your name
 NAME=Clark_Wallace
 
@@ -17,7 +17,15 @@ CPPVERSION = -std=c++17
 OBJECTS    = $(SOURCE:.cpp=.o)
 GLFW_SRC   = external/glfw-3.4/src
 GLFW_LIB   = external/glfw-3.4/build/src/libglfw3.a
-GLFW_OS_FILE = external/glfw-3.4/build/src/last_build_os.txt
+
+# Single OS tracking file for everything (GLFW + shaders + Vulkan headers)
+BUILD_OS_FILE = .last_build_os
+
+SHADER_DIR = shaders
+VERT_SRC   = $(SHADER_DIR)/shader.vert
+FRAG_SRC   = $(SHADER_DIR)/shader.frag
+VERT_SPV   = $(SHADER_DIR)/vert.spv
+FRAG_SPV   = $(SHADER_DIR)/frag.spv
 
 # ── OS Detection ──────────────────────────────────────────────────────────────
 ifeq ($(OS),Windows_NT)
@@ -28,6 +36,7 @@ ifeq ($(OS),Windows_NT)
   ARCHIVE_EXTENSION = zip
   ZIP_NAME          = $(PROJECT_NAME)_$(NAME).$(ARCHIVE_EXTENSION)
   VULKAN_SCRIPT     = powershell -ExecutionPolicy Bypass -File install_vulkan.ps1
+  SHADER_SCRIPT     = compile_windows.bat
 
   VULKAN_SDK_PATH ?= $(VULKAN_SDK)
   ifeq ($(VULKAN_SDK_PATH),)
@@ -41,7 +50,6 @@ ifeq ($(OS),Windows_NT)
                -lvulkan-1 \
                -lgdi32 -luser32 -lshell32
 
-  # Windows GLFW sources (Win32 backend)
   GLFW_FLAGS = -D_GLFW_WIN32 -Iexternal/glfw-3.4/include -Iexternal/glfw-3.4/src
   GLFW_SRCS  = \
     context.c init.c input.c monitor.c platform.c vulkan.c window.c \
@@ -55,6 +63,7 @@ else
   TARGET            = $(PROJECT_NAME)
   DEL               = rm -f
   VULKAN_SCRIPT     = bash install_vulkan.sh
+  SHADER_SCRIPT     = bash compile_linux.sh
   LDFLAGS           = $(GLFW_LIB) -lvulkan -ldl -lpthread
 
   ifneq ($(shell clang++ --version 2>/dev/null | grep -o "Target: x86_64"),)
@@ -72,7 +81,6 @@ else
 
   ZIP_NAME = $(PROJECT_NAME)_$(NAME).$(ARCHIVE_EXTENSION)
 
-  # Linux GLFW sources (X11 backend)
   GLFW_FLAGS = -D_GLFW_X11 -Iexternal/glfw-3.4/include -Iexternal/glfw-3.4/src
   GLFW_SRCS  = \
     context.c init.c input.c monitor.c platform.c vulkan.c window.c \
@@ -88,46 +96,58 @@ endif
 GLFW_OBJS = $(addprefix $(GLFW_SRC)/,$(GLFW_SRCS:.c=.glfw.o))
 
 # ── Targets ───────────────────────────────────────────────────────────────────
-all: check-vulkan build-glfw $(TARGET)
+all: check-os-change check-vulkan build-glfw compile-shaders $(TARGET)
+
+# ── OS change detection — wipes everything if OS changed since last build ──────
+check-os-change:
+ifeq ($(OS),Windows_NT)
+	@if exist "$(BUILD_OS_FILE)" ( \
+		for /f "delims=" %%i in ($(BUILD_OS_FILE)) do ( \
+			if not "%%i"=="$(PLATFORM)" ( \
+				echo [OS] Platform changed from %%i to $(PLATFORM) - wiping all build artifacts... & \
+				del /Q "$(GLFW_LIB)" 2>nul & \
+				del /Q "external\glfw-3.4\src\*.glfw.o" 2>nul & \
+				del /Q "$(VERT_SPV)" "$(FRAG_SPV)" 2>nul & \
+				del /Q "$(OBJECTS)" 2>nul & \
+				del /Q "$(TARGET)" 2>nul \
+			) \
+		) \
+	)
+	@echo $(PLATFORM)> "$(BUILD_OS_FILE)"
+else
+	@LAST=""; \
+	if [ -f "$(BUILD_OS_FILE)" ]; then LAST=$$(cat "$(BUILD_OS_FILE)"); fi; \
+	if [ -n "$$LAST" ] && [ "$$LAST" != "$(PLATFORM)" ]; then \
+		echo "[OS] Platform changed from $$LAST to $(PLATFORM) - wiping all build artifacts..."; \
+		rm -f "$(GLFW_LIB)" $(GLFW_SRC)/*.glfw.o; \
+		rm -f "$(VERT_SPV)" "$(FRAG_SPV)"; \
+		rm -f $(OBJECTS) $(TARGET); \
+	fi; \
+	echo "$(PLATFORM)" > "$(BUILD_OS_FILE)"
+endif
 
 # ── Vulkan check ──────────────────────────────────────────────────────────────
 check-vulkan:
 	@echo "[Makefile] Checking Vulkan installation ($(PLATFORM))..."
 	@$(VULKAN_SCRIPT)
 
-# ── Build GLFW (auto-rebuilds if OS changed since last build) ─────────────────
+# ── Build GLFW ────────────────────────────────────────────────────────────────
 build-glfw:
 ifeq ($(OS),Windows_NT)
-	@if exist "external\glfw-3.4\build\src\last_build_os.txt" ( \
-		for /f "delims=" %%i in (external\glfw-3.4\build\src\last_build_os.txt) do \
-		if not "%%i"=="windows" ( \
-			echo [GLFW] OS changed from %%i to windows - rebuilding GLFW... & \
-			del /Q "external\glfw-3.4\build\src\libglfw3.a" 2>nul & \
-			del /Q "external\glfw-3.4\src\*.glfw.o" 2>nul \
-		) \
-	)
-	@if exist "external\glfw-3.4\build\src\libglfw3.a" ( \
+	@if exist "$(GLFW_LIB)" ( \
 		echo [GLFW] libglfw3.a already exists, skipping. \
 	) else ( \
-		echo [GLFW] Building libglfw3.a for windows... & \
+		echo [GLFW] Building libglfw3.a for $(PLATFORM)... & \
 		if not exist "external\glfw-3.4\build\src" mkdir "external\glfw-3.4\build\src" & \
-		$(MAKE) $(GLFW_LIB) & \
-		echo windows> "external\glfw-3.4\build\src\last_build_os.txt" \
+		$(MAKE) $(GLFW_LIB) \
 	)
 else
-	@LAST=""; \
-	if [ -f "$(GLFW_OS_FILE)" ]; then LAST=$$(cat "$(GLFW_OS_FILE)"); fi; \
-	if [ -n "$$LAST" ] && [ "$$LAST" != "$(PLATFORM)" ]; then \
-		echo "[GLFW] OS changed from $$LAST to $(PLATFORM) - rebuilding GLFW..."; \
-		rm -f "$(GLFW_LIB)" $(GLFW_SRC)/*.glfw.o; \
-	fi
 	@if [ -f "$(GLFW_LIB)" ]; then \
 		echo "[GLFW] libglfw3.a already exists, skipping."; \
 	else \
 		echo "[GLFW] Building libglfw3.a for $(PLATFORM)..."; \
 		mkdir -p external/glfw-3.4/build/src; \
 		$(MAKE) $(GLFW_LIB); \
-		echo "$(PLATFORM)" > "$(GLFW_OS_FILE)"; \
 	fi
 endif
 
@@ -137,6 +157,17 @@ $(GLFW_LIB): $(GLFW_OBJS)
 
 $(GLFW_SRC)/%.glfw.o: $(GLFW_SRC)/%.c
 	$(CC) -c $< -o $@ $(GLFW_FLAGS)
+
+# ── Shader compilation ────────────────────────────────────────────────────────
+compile-shaders: $(VERT_SPV) $(FRAG_SPV)
+
+$(VERT_SPV): $(VERT_SRC)
+	@echo "[Shaders] Compiling vertex shader..."
+	@$(SHADER_SCRIPT)
+
+$(FRAG_SPV): $(FRAG_SRC)
+	@echo "[Shaders] Compiling fragment shader..."
+	@$(SHADER_SCRIPT)
 
 # ── Main build ────────────────────────────────────────────────────────────────
 $(TARGET): $(OBJECTS)
@@ -150,9 +181,16 @@ endif
 
 clean:
 ifeq ($(OS),Windows_NT)
-	-$(DEL) $(TARGET) $(OBJECTS) 2>nul
+	-$(DEL) $(TARGET) $(OBJECTS) "$(VERT_SPV)" "$(FRAG_SPV)" 2>nul
 else
-	$(DEL) $(TARGET) $(OBJECTS)
+	$(DEL) $(TARGET) $(OBJECTS) $(VERT_SPV) $(FRAG_SPV)
+endif
+
+clean-all: clean
+ifeq ($(OS),Windows_NT)
+	-$(DEL) "$(GLFW_LIB)" "external\glfw-3.4\src\*.glfw.o" "$(BUILD_OS_FILE)" 2>nul
+else
+	$(DEL) $(GLFW_LIB) $(GLFW_SRC)/*.glfw.o $(BUILD_OS_FILE)
 endif
 
 depend:
@@ -170,7 +208,7 @@ submission:
 	$(ZIPPER) $(ZIP_NAME) $(SOURCE) $(H_FILES) $(RSR_FILES) Makefile
 	@echo "...$(ZIP_NAME) done check for errors"
 
-.PHONY: all clean depend submission check-vulkan build-glfw
+.PHONY: all clean clean-all depend submission check-vulkan check-os-change build-glfw compile-shaders
 
 # DEPENDENCIES
 main.o: main.cpp

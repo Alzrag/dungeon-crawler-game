@@ -1,2 +1,2 @@
-external/glslc shaders/simple_shader.vert -o shaders/simple_shader.vert.spv
-external/glslc shaders/simple_shader.frag -o shaders/simple_shader.frag.spv
+external/glslc shaders/shader.vert -o shaders/vert.spv
+external/glslc shaders/shader.frag -o shaders/frag.spv
