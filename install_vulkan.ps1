@@ -58,7 +58,7 @@ if ($sdkFromEnv -and (Test-Path $sdkFromEnv)) {
         Use-ExistingSDK $sdkFromEnv
         exit 0
     } else {
-        Write-Status "Vulkan SDK found at $sdkFromEnv but validation layers missing — reinstalling..."
+        Write-Status "Vulkan SDK found at $sdkFromEnv but validation layers missing -- reinstalling..."
     }
 } elseif (Test-Path "$InstallPath\Bin\vulkan-1.dll") {
     if (Test-ValidationLayers $InstallPath) {
@@ -66,7 +66,7 @@ if ($sdkFromEnv -and (Test-Path $sdkFromEnv)) {
         Use-ExistingSDK $InstallPath
         exit 0
     } else {
-        Write-Status "Vulkan SDK found at $InstallPath but validation layers missing — reinstalling..."
+        Write-Status "Vulkan SDK found at $InstallPath but validation layers missing -- reinstalling..."
     }
 }
 
@@ -119,7 +119,7 @@ try {
     Write-Ok "Environment variables set machine-wide."
 } catch {
     $scope = "User"
-    Write-Status "No admin rights — setting user-level environment variables."
+    Write-Status "No admin rights -- setting user-level environment variables."
     [System.Environment]::SetEnvironmentVariable("VULKAN_SDK", $InstallPath, "User")
     $up = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     if ($up -notlike "*$binPath*") {
