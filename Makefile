@@ -3,7 +3,7 @@ PROJECT_NAME=main
 #source file location
 SOURCE= main.cpp
 #any additional header files you need
-H_FILES = 
+H_FILES = vertex_data.hpp
 #any additional resource files you need
 RSR_FILES = 
 #your name

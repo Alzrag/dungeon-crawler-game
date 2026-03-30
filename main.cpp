@@ -1,6 +1,8 @@
 #include <cstdint>
+#include <glm/vector_relational.hpp>
 #include <limits>
 #include <stdexcept>
+#include <sys/types.h>
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -15,6 +17,9 @@
 #include <optional>
 #include <set>
 #include <fstream>
+#include <glm/glm.hpp>
+#include "vertex_data.hpp"
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;//really dont change window size its hard
 
@@ -74,6 +79,8 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;//a signaller for when something is done
     bool framebufferResized = false;
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height){
       auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -469,8 +476,46 @@ private:
       createGraphicsPipeline();
       createFramebuffers();
       createCommandPool();
+      createVertexBuffer();
       createCommandBuffer();
       createSyncObjects();
+    }
+
+    void createVertexBuffer(){
+      VkBufferCreateInfo bufferInfo{};
+      bufferInfo.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bufferInfo.size=sizeof(verticies[0])*verticies.size();
+      bufferInfo.usage=VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      bufferInfo.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
+
+      if (vkCreateBuffer(device,&bufferInfo,nullptr,&vertexBuffer)!=VK_SUCCESS){
+        throw std::runtime_error("failed to create vertex buffer");
+      }
+
+      VkMemoryRequirements memRequirements;
+      vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+    
+      VkMemoryAllocateInfo allocInfo{};
+      allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+      allocInfo.allocationSize=memRequirements.size;
+      allocInfo.memoryTypeIndex=findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    
+      if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate vertex buffer memory");
+      }
+    }
+
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties){
+      VkPhysicalDeviceMemoryProperties memProperties;
+      vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+      for (uint32_t i = 0;i<memProperties.memoryTypeCount;i++){
+        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags&properties)==properties) {
+          return i;
+        }
+      }
+
+      throw std::runtime_error("failed to find suitable memory type");
     }
 
     void createSyncObjects(){
@@ -592,13 +637,15 @@ private:
       fragShaderStageInfo.pName="main";
 
       VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-      
+     
+      auto bindingDescription = Vertex::getBindingDescription();
+      auto attributeDescriptions = Vertex::getAttributeDescriptions();
       VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
       vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-      vertexInputInfo.vertexBindingDescriptionCount = 0;
-      vertexInputInfo.pVertexBindingDescriptions = nullptr;
-      vertexInputInfo.vertexAttributeDescriptionCount=0;
-      vertexInputInfo.pVertexAttributeDescriptions=nullptr;
+      vertexInputInfo.vertexBindingDescriptionCount = 1;
+      vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+      vertexInputInfo.vertexAttributeDescriptionCount= static_cast<uint32_t>(attributeDescriptions.size());
+      vertexInputInfo.pVertexAttributeDescriptions=attributeDescriptions.data();
 
       VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
       inputAssembly.sType=VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -852,20 +899,20 @@ private:
       }
     }
 
-  static std::vector<char> readFile(const std::string& filename){
-    std::ifstream file(filename,std::ios::ate | std::ios::binary);
-    if(!file.is_open()){
-      throw std::runtime_error("failed to open file");
+    static std::vector<char> readFile(const std::string& filename){
+      std::ifstream file(filename,std::ios::ate | std::ios::binary);
+      if(!file.is_open()){
+        throw std::runtime_error("failed to open file");
+      }
+
+      size_t fileSize = (size_t)file.tellg();
+      std::vector<char> buffer(fileSize);
+
+      file.seekg(0);
+      file.read(buffer.data(), fileSize);
+      file.close();
+      return buffer;
     }
-
-    size_t fileSize = (size_t)file.tellg();
-    std::vector<char> buffer(fileSize);
-
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-    return buffer;
-  }
 
     void setupDebugMessenger() {
       if (!enableValidationLayers) return;
@@ -980,7 +1027,8 @@ private:
 
       vkDestroyCommandPool(device, commandPool, nullptr);
 
-      cleanupSwapChain();     
+      cleanupSwapChain();
+      vkDestroyBuffer(device, vertexBuffer, nullptr);
       vkDestroyPipeline(device, graphicsPipeline, nullptr);
       vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
       vkDestroyRenderPass(device, renderPass, nullptr);
