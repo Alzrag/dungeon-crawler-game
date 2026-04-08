@@ -80,7 +80,7 @@ private:
     std::vector<VkFence> inFlightFences;//a signaller for when something is done
     bool framebufferResized = false;
     VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory
+    VkDeviceMemory vertexBufferMemory;
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height){
       auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -106,7 +106,6 @@ private:
       renderPassInfo.clearValueCount=1;
       renderPassInfo.pClearValues=&clearColor;
       vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-      vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
       
       VkViewport viewport{};//stretches
       viewport.x = 0.0f;
@@ -122,7 +121,12 @@ private:
       scissor.extent=swapChainExtent;
       vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-      vkCmdDraw(commandBuffer,3,1,0,0);
+      vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+      VkBuffer vertexBuffers[] = {vertexBuffer};
+      VkDeviceSize offsets[] = {0};
+      vkCmdBindVertexBuffers(commandBuffer,0,1,vertexBuffers, offsets);
+      vkCmdDraw(commandBuffer, static_cast<uint32_t>(verticies.size()),1,0,0);
+
       vkCmdEndRenderPass(commandBuffer);
       if(vkEndCommandBuffer(commandBuffer)!=VK_SUCCESS){
         throw std::runtime_error("failed tor ecord command buffer");
@@ -503,6 +507,13 @@ private:
       if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate vertex buffer memory");
       }
+
+      vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+    
+      void* data;
+      vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size,0,&data);
+      memcpy(data,verticies.data(),(size_t) bufferInfo.size);
+      vkUnmapMemory(device, vertexBufferMemory);
     }
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties){
@@ -822,11 +833,11 @@ private:
       createInfo.oldSwapchain=VK_NULL_HANDLE;
 
       QueueFamilyIndicies indices = findQueueFamilies(physicalDevice);
-      uint32_t QueueFamilyIndicies[] {indices.graphicsFamily.value(), indices.presentFamily.value()};
+      uint32_t queueFamilyIndicies[] {indices.graphicsFamily.value(), indices.presentFamily.value()};
       if (indices.graphicsFamily != indices.presentFamily) {
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         createInfo.queueFamilyIndexCount = 2;
-        createInfo.pQueueFamilyIndices = QueueFamilyIndicies;
+        createInfo.pQueueFamilyIndices = queueFamilyIndicies;
       } else {
         createInfo.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
@@ -1029,14 +1040,15 @@ private:
 
       cleanupSwapChain();
       vkDestroyBuffer(device, vertexBuffer, nullptr);
+      vkFreeMemory(device,vertexBufferMemory,nullptr);
       vkDestroyPipeline(device, graphicsPipeline, nullptr);
       vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
       vkDestroyRenderPass(device, renderPass, nullptr);
 
-      for (auto imageView : swapChainImageViews) {
-        vkDestroyImageView(device, imageView , nullptr);
-      }
-      vkDestroySwapchainKHR(device, swapChain, nullptr);
+      //for (auto imageView : swapChainImageViews) {
+      //  vkDestroyImageView(device, imageView , nullptr);
+      //}
+      //vkDestroySwapchainKHR(device, swapChain, nullptr);
       vkDestroyDevice(device, nullptr);
       if (enableValidationLayers){
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
