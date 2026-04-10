@@ -1,5 +1,7 @@
+#include <cstddef>
 #include <cstdint>
 #include <glm/vector_relational.hpp>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <sys/types.h>
@@ -71,7 +73,7 @@ private:
     VkPipeline graphicsPipeline;//ferb we did it
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
+  std::vector<VkCommandBuffer> commandBuffers;
     //dancing aroudn emmeory acsess issues
     const int MAX_FRAMES_IN_FLIGHT = 2;
     int currentFrame = 0;
@@ -81,6 +83,8 @@ private:
     bool framebufferResized = false;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height){
       auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -125,7 +129,8 @@ private:
       VkBuffer vertexBuffers[] = {vertexBuffer};
       VkDeviceSize offsets[] = {0};
       vkCmdBindVertexBuffers(commandBuffer,0,1,vertexBuffers, offsets);
-      vkCmdDraw(commandBuffer, static_cast<uint32_t>(verticies.size()),1,0,0);
+      vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+      vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indicies.size()),1,0,0,0);
 
       vkCmdEndRenderPass(commandBuffer);
       if(vkEndCommandBuffer(commandBuffer)!=VK_SUCCESS){
@@ -481,8 +486,26 @@ private:
       createFramebuffers();
       createCommandPool();
       createVertexBuffer();
+      createIndexBuffer();
       createCommandBuffer();
       createSyncObjects();
+    }
+
+    void createIndexBuffer(){
+      VkDeviceSize bufferSize = sizeof(indicies[0]) * indicies.size();
+      VkBuffer stagingBuffer;
+      VkDeviceMemory stagingBufferMemory;
+      createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+      void* data;
+      vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+      memcpy(data, indicies.data(), (size_t)bufferSize);
+      vkUnmapMemory(device, stagingBufferMemory);
+      createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+      copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+      vkDestroyBuffer(device, stagingBuffer, nullptr);
+      vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
     void createVertexBuffer(){
@@ -580,7 +603,7 @@ private:
 
     void createSyncObjects(){
       imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-      renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+      renderFinishedSemaphores.resize(swapChainImages.size());
       inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
       VkSemaphoreCreateInfo semaphoreInfo{};
@@ -588,21 +611,28 @@ private:
       VkFenceCreateInfo fenceInfo{};
       fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
       fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
+      
       for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-          if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS){
-              throw std::runtime_error("failed to create sync objects");
-          }
-      }  
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+          vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS){
+          throw std::runtime_error("failed to create sync objects");
+        }
+      }
+      for (size_t i = 0; i < swapChainImages.size(); i++){
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS){
+          throw std::runtime_error("failed to create render finished semaphores");
+        }
+      }
     }
 
     void createCommandBuffer(){
+      commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
       VkCommandBufferAllocateInfo allocInfo{};
       allocInfo.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
       allocInfo.commandPool=commandPool;
       allocInfo.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-      allocInfo.commandBufferCount=1;
-      if(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)!=VK_SUCCESS){
+      allocInfo.commandBufferCount=static_cast<uint32_t>(commandBuffers.size());
+      if(vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data())!=VK_SUCCESS){
         throw std::runtime_error("failed to allocate command buffers");
       }
     }
@@ -1012,10 +1042,10 @@ private:
 
       vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-      vkResetCommandBuffer(commandBuffer, 0);
-      recordCommandBuffer(commandBuffer, imageIndex);
+      vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+      recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
-      VkSemaphore signalSemaphores[]={renderFinishedSemaphores[currentFrame]};
+      VkSemaphore signalSemaphores[]={renderFinishedSemaphores[imageIndex]};
       VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
       VkPipelineStageFlags waitStages[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
       VkSubmitInfo submitInfo{};
@@ -1024,7 +1054,7 @@ private:
       submitInfo.pWaitSemaphores=waitSemaphores;
       submitInfo.pWaitDstStageMask=waitStages;
       submitInfo.commandBufferCount=1;
-      submitInfo.pCommandBuffers=&commandBuffer;
+      submitInfo.pCommandBuffers=&commandBuffers[currentFrame];
       submitInfo.signalSemaphoreCount=1;
       submitInfo.pSignalSemaphores=signalSemaphores;
       if(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame])!=VK_SUCCESS){
@@ -1043,6 +1073,7 @@ private:
       presentInfo.pResults=nullptr;
 
       vkQueuePresentKHR(presentQueue, &presentInfo);
+      currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     } 
 
     //this is a functiont o detroy the beguv messagner extion layer basically a destructor with weird iplimention if i understand property 
@@ -1078,26 +1109,26 @@ private:
     }
 
     void cleanup() {
-      vkDeviceWaitIdle(device);
-      for (size_t i =0;i<MAX_FRAMES_IN_FLIGHT;i++){
+      vkDeviceWaitIdle(device); 
+
+      for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
       }
-
+      for (size_t i = 0; i < renderFinishedSemaphores.size(); i++){
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+      }
       vkDestroyCommandPool(device, commandPool, nullptr);
 
       cleanupSwapChain();
+      vkDestroyBuffer(device, indexBuffer, nullptr);
+      vkFreeMemory(device, indexBufferMemory, nullptr);
       vkDestroyBuffer(device, vertexBuffer, nullptr);
       vkFreeMemory(device,vertexBufferMemory,nullptr);
       vkDestroyPipeline(device, graphicsPipeline, nullptr);
       vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
       vkDestroyRenderPass(device, renderPass, nullptr);
-
-      //for (auto imageView : swapChainImageViews) {
-      //  vkDestroyImageView(device, imageView , nullptr);
-      //}
-      //vkDestroySwapchainKHR(device, swapChain, nullptr);
+ 
       vkDestroyDevice(device, nullptr);
       if (enableValidationLayers){
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
