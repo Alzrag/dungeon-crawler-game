@@ -22,12 +22,14 @@
 #include <optional>
 #include <set>
 #include <fstream>
-#include <glm/glm.hpp>
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include "vertex_data.hpp"
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
+#define STD_IMAGE_IMPLIMENTATION
+#include <stb_image.h>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;//really dont change window size its hard
@@ -99,7 +101,6 @@ private:
     VkPipelineLayout piplineLayout;
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
-    
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height){
       auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -193,9 +194,9 @@ private:
     };
 
     struct UniformBufferObject {
-      glm::mat4 model;
-      glm::mat4 view;
-      glm::mat4 proj;
+      alignas(16) glm::mat4 model;
+      alignas(16) glm::mat4 view;
+      alignas(16) glm::mat4 proj;
     };
 
     SwarpChainSupportDetails querySwapChainSupport(VkPhysicalDevice device){
@@ -508,6 +509,7 @@ private:
       createGraphicsPipeline();
       createFramebuffers();
       createCommandPool();
+      createTextureImage();
       createVertexBuffer();
       createIndexBuffer();
       createUniformBuffers();
@@ -515,6 +517,25 @@ private:
       createDescriptorSets();
       createCommandBuffer();
       createSyncObjects();
+    }
+
+    void createTextureImage(){
+      VkBuffer stagingBuffer;
+      VkDeviceMemory stagingBufferMemory;
+      
+      int texWidth, texheight, texChannels;
+      stbi_uc* pixels =stbi_load("textures/texture.png", &texWidth, &texheight, &texChannels, STBI_rgb_alpha);
+      VkDeviceSize imageSize=texWidth*texheight*4;
+      if(!pixels){
+        throw std::runtime_error("failed to loard/find texture image");
+      }
+
+      createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+      void * data;
+      vkMapMemory(device, stagingBufferMemory,0,imageSize,0,&data);
+      memcpy(data, pixels, static_cast<size_t>(imageSize));
+      vkUnmapMemory(device, stagingBufferMemory);
+      stbi_image_free(pixels);
     }
 
     void createDescriptorPool(){

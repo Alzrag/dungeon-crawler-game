@@ -12,7 +12,7 @@ NAME=Clark_Wallace
 CXX = g++
 CC  = gcc
 CXX_FLAGS = -Wall -Wextra -Wconversion -Wdouble-promotion -Wunreachable-code -Wshadow -Wpedantic \
-            -Iexternal/glfw-3.4/include -Iexternal/Vulkan-Headers/include
+            -Iexternal/glfw-3.4/include -Iexternal/Vulkan-Headers/include -Iexternal
 CPPVERSION = -std=c++17
 OBJECTS    = $(SOURCE:.cpp=.o)
 GLFW_SRC   = external/glfw-3.4/src
