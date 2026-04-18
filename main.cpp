@@ -103,6 +103,8 @@ private:
     std::vector<VkDescriptorSet> descriptorSets;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height){
       auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -512,6 +514,8 @@ private:
       createFramebuffers();
       createCommandPool();
       createTextureImage();
+      createTextureImageView();
+      createTextureSampler();
       createVertexBuffer();
       createIndexBuffer();
       createUniformBuffers();
@@ -519,6 +523,52 @@ private:
       createDescriptorSets();
       createCommandBuffer();
       createSyncObjects();
+    }
+
+    void createTextureSampler(){
+      VkSamplerCreateInfo samplerInfo{};
+      samplerInfo.sType=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+      samplerInfo.magFilter=VK_FILTER_NEAREST;//for boltgun/bloodtheif look 
+      samplerInfo.minFilter=VK_FILTER_NEAREST;//^
+      samplerInfo.addressModeU=VK_SAMPLER_ADDRESS_MODE_REPEAT;//hay they did tiling in one line instead of programming a massive fucking texture node in unity
+      samplerInfo.addressModeV=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+      samplerInfo.addressModeW=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+      samplerInfo.anisotropyEnable=VK_FALSE;//to keep a blocky pixelated look
+      samplerInfo.maxAnisotropy=1.0;
+      samplerInfo.borderColor=VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+      samplerInfo.unnormalizedCoordinates=VK_FALSE;//for size normalization
+      samplerInfo.compareEnable=VK_FALSE;
+      samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;//for shadows
+      samplerInfo.mipmapMode=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+      samplerInfo.mipLodBias=0.0f;
+      samplerInfo.minLod=0.0f;
+      samplerInfo.maxLod=0.0f;
+      
+      if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler)!=VK_SUCCESS){
+        throw std::runtime_error("failed to create texture sampler");
+      }
+    }
+
+    VkImageView createImageView(VkImage image, VkFormat format) {
+      VkImageViewCreateInfo viewInfo{};
+      viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      viewInfo.image = image;
+      viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      viewInfo.format = format;
+      viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewInfo.subresourceRange.baseMipLevel = 0;
+      viewInfo.subresourceRange.levelCount = 1;
+      viewInfo.subresourceRange.baseArrayLayer = 0;
+      viewInfo.subresourceRange.layerCount = 1;
+      VkImageView imageView;
+      if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+          throw std::runtime_error("failed to create image view!");
+      }
+      return imageView;
+    }
+
+    void createTextureImageView(){
+      textureImageView=createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
     }
 
     void createTextureImage(){
@@ -1108,24 +1158,8 @@ private:
 
     void createImageViews(){
       swapChainImageViews.resize(swapChainImages.size());
-      for (size_t i = 0;i<swapChainImages.size();i++){
-        VkImageViewCreateInfo createinfo{};
-        createinfo.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createinfo.image=swapChainImages[i];
-        createinfo.viewType=VK_IMAGE_VIEW_TYPE_2D;
-        createinfo.format=swapChainImageFormat;
-        createinfo.components.r=VK_COMPONENT_SWIZZLE_IDENTITY;
-        createinfo.components.g=VK_COMPONENT_SWIZZLE_IDENTITY;
-        createinfo.components.b=VK_COMPONENT_SWIZZLE_IDENTITY;
-        createinfo.components.a=VK_COMPONENT_SWIZZLE_IDENTITY;
-        createinfo.subresourceRange.aspectMask=VK_IMAGE_ASPECT_COLOR_BIT;
-        createinfo.subresourceRange.baseMipLevel=0;
-        createinfo.subresourceRange.levelCount=1;
-        createinfo.subresourceRange.baseArrayLayer=0;
-        createinfo.subresourceRange.layerCount=1;
-        if (vkCreateImageView(device,&createinfo,nullptr,&swapChainImageViews[i]) != VK_SUCCESS){
-          throw std::runtime_error("failed to create image views");
-        }
+      for (uint32_t i = 0;i<swapChainImages.size();i++){
+        swapChainImageViews[i]=createImageView(swapChainImages[i], swapChainImageFormat);
       }
     }
 
@@ -1380,6 +1414,9 @@ private:
       vkDestroyCommandPool(device, commandPool, nullptr);
 
       cleanupSwapChain();
+
+      vkDestroySampler(device, textureSampler, nullptr);
+      vkDestroyImageView(device, textureImageView, nullptr);
 
       vkDestroyImage(device, textureImage, nullptr);
       vkFreeMemory(device, textureImageMemory, nullptr);
