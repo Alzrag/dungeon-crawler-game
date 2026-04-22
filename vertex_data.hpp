@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <vector>
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -8,9 +9,12 @@
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 struct Vertex{ 
-  glm::vec2 pos;
+  glm::vec3 pos;
   glm::vec3 color;
   glm::vec2 texCoord;
 
@@ -27,7 +31,7 @@ struct Vertex{
     std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
     attributeDescriptions[0].binding=0;
     attributeDescriptions[0].location=0;
-    attributeDescriptions[0].format=VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[0].format=VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[0].offset=offsetof(Vertex, pos);
 
     attributeDescriptions[1].binding=0;
@@ -42,16 +46,22 @@ struct Vertex{
 
     return attributeDescriptions;
   }
+
+  bool operator ==(const Vertex& other) const {
+    return pos == other.pos && color==other.color&&texCoord==other.texCoord;
+  }
 };
 
+namespace std {
+  template<> struct hash<Vertex> {
+    size_t operator()(Vertex const& vertex) const {
+      return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+    }
+  };
+}
 
-inline const std::vector<Vertex> verticies = {
-  {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},  // top-left
-  {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},  // top-right
-  {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},  // bottom-right
-  {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}   // bottom-left
-};
+std::vector<Vertex> vertices;
+std::vector<uint32_t> indices;
 
-inline const std::vector<uint16_t> indicies {
-  0,1,2,2,3,0
-};
+VkBuffer vertexBuffer;
+VkDeviceMemory vertexBufferMemory;
