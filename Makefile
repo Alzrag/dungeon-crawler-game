@@ -1,9 +1,9 @@
 #project name
 PROJECT_NAME=main
 #source file location
-SOURCE= main.cpp
+SOURCE= Engine.cpp helpers.cpp
 #any additional header files you need
-H_FILES = vertex_data.hpp
+H_FILES = vertex_data.hpp helpers.h
 #any additional resource files you need
 RSR_FILES = 
 #your name
@@ -199,4 +199,4 @@ submission:
 
 
 # DEPENDENCIES
-main.o: main.cpp
+#TODO
