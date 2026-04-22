@@ -1,5 +1,10 @@
 #include "Engine.h"
+#include "GameObject.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 void Engine::run() {
 initVulkan();
@@ -64,7 +69,7 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 }
 
 //queue families dertminte the order of commands sent
-QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
+Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
   QueueFamilyIndicies indices;
   uint32_t queueFamilyCount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);//get a list of queue families
@@ -88,7 +93,7 @@ QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
   return indices  ;
 }
 
-SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice device){
+Engine::SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice device){
   SwarpChainSupportDetails details;
 
   uint32_t formatCount;
@@ -1306,8 +1311,8 @@ void Engine::updateUniformBuffer(uint32_t currentImage){
   auto currentTime = std::chrono::high_resolution_clock::now();
   float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-  UniformBufferObject ubo{};
-  ubo.model=glm::rotate(glm::mat4(1.0f), time*glm::radians(90.0f), glm::vec3(0.0f,0.0f,1.0f));
+  UniformBufferObject ubo{};//TODO
+  ubo.model=Gameobject->getModelMatrix;
   
   ubo.view=glm::lookAt(glm::vec3(2.0f,2.0f,2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,0.0f,1.0f));
   ubo.proj=glm::perspective(glm::radians(45.0f), swapChainExtent.width/(float)swapChainExtent.height, 0.1f, 10.0f);
@@ -1352,49 +1357,54 @@ void Engine::recreateSwapChain(){
 }
 
 void Engine::cleanup() {
-  vkDeviceWaitIdle(device); 
+    vkDeviceWaitIdle(device); 
 
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-    vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-    vkDestroyFence(device, inFlightFences[i], nullptr);
-  }
-  for (size_t i = 0; i < renderFinishedSemaphores.size(); i++){
-    vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-  }
-  vkDestroyCommandPool(device, commandPool, nullptr);
+    cleanupSwapChain();//framerbuffers and iamge views
 
-  cleanupSwapChain();
+    //timing and sync objects
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroyFence(device, inFlightFences[i], nullptr);
+    }
 
-  vkDestroySampler(device, textureSampler, nullptr);
-  vkDestroyImageView(device, textureImageView, nullptr);
+    //UBO's and descriptions
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+        vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+        vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+    }
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr); // ONLY CALL ONCE
 
-  vkDestroyImage(device, textureImage, nullptr);
-  vkFreeMemory(device, textureImageMemory, nullptr);
-  
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-    vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-    vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-  }
+    //Texture and Geomatry
+    vkDestroySampler(device, textureSampler, nullptr);
+    vkDestroyImageView(device, textureImageView, nullptr);
+    vkDestroyImage(device, textureImage, nullptr);
+    vkFreeMemory(device, textureImageMemory, nullptr);
 
-  vkDestroyDescriptorSetLayout(device, descriptorSetLayout,nullptr);
-  vkDestroyBuffer(device, indexBuffer, nullptr);
-  vkFreeMemory(device, indexBufferMemory, nullptr);
-  vkDestroyBuffer(device, vertexBuffer, nullptr);
-  vkFreeMemory(device,vertexBufferMemory,nullptr);
-  vkDestroyPipeline(device, graphicsPipeline, nullptr);
-  vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-  vkDestroyRenderPass(device, renderPass, nullptr);
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
 
-  vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-  vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+    //Pipeline and render
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
 
-  vkDestroyDevice(device, nullptr);
-  if (enableValidationLayers){
-    DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-  }
-  vkDestroySurfaceKHR(instance, surface, nullptr);
-  vkDestroyInstance(instance, nullptr); //i beleive that this destroyed the instance and sets its poitns to nullptr may be wrong?
-  glfwDestroyWindow(window);//when window closes destroy its
-  glfwTerminate();//stop the glfw library background tasks
+    //Core vulkan handles
+    vkDestroyCommandPool(device, commandPool, nullptr);
+    vkDestroyDevice(device, nullptr);
+
+    if (enableValidationLayers){
+        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+    }
+
+    vkDestroySurfaceKHR(instance, surface, nullptr);
+    vkDestroyInstance(instance, nullptr);
+    instance = VK_NULL_HANDLE; //equivlent to =nullptr;
+
+    //external libnraries
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
-

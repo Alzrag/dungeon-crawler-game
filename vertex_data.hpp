@@ -60,8 +60,8 @@ namespace std {
   };
 }
 
-std::vector<Vertex> vertices;
-std::vector<uint32_t> indices;
+inline std::vector<Vertex> vertices;
+inline std::vector<uint32_t> indices;
 
-VkBuffer vertexBuffer;
-VkDeviceMemory vertexBufferMemory;
+inline VkBuffer vertexBuffer;
+inline VkDeviceMemory vertexBufferMemory;

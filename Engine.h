@@ -1,21 +1,11 @@
 #pragma once
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/trigonometric.hpp>
-#include <glm/vector_relational.hpp>
-#include <iterator>
-#include <limits>
-#include <stdexcept>
-#include <sys/types.h>
-#include <vulkan/vk_platform.h>
+//Core
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+//std
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -25,31 +15,35 @@
 #include <optional>
 #include <set>
 #include <fstream>
-#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-#include "vertex_data.hpp"
+#include <chrono>
+#include <unordered_map>
+
+//GLM
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <chrono>
-#define STB_IMAGE_IMPLEMENTATION
+
+//External
 #include <stb_image.h>
-#include <glm/gtc/matrix_transform.hpp>
-#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-#include <unordered_map>
+
+//Project Files
+#include "vertex_data.hpp"
 #include "helpers.h"
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;//really dont change window size its hard
 
-const std::string APPLICATIONNAME= "triangle application";
-const std::string ENGINENAME="DM Engine";
+inline const uint32_t WIDTH = 800;
+inline const uint32_t HEIGHT = 600;//really dont change window size its hard
 
-const std::string MODEL_PATH="models/viking_room.obj";
-const std::string TEXTURE_PATH="textures/viking_room.png";
+inline const std::string APPLICATIONNAME= "triangle application";
+inline const std::string ENGINENAME="DM Engine";
 
-const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};//holds our additional validation layers witch are largly all in a build int one by the used name
+inline const std::string MODEL_PATH="models/viking_room.obj";
+inline const std::string TEXTURE_PATH="textures/viking_room.png";
+
+inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};//holds our additional validation layers witch are largly all in a build int one by the used name
 
 #ifdef NDEBUG
   const bool enableValidationLayers = false;
@@ -108,7 +102,7 @@ class Engine {
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
 
-        struct QueueFamilyIndicies {
+    struct QueueFamilyIndicies {
       std::optional<uint32_t> graphicsFamily;
       std::optional<uint32_t> presentFamily;
       bool isComplete(){
@@ -186,6 +180,7 @@ class Engine {
     void createTextureImageView();
     void createTextureSampler();
     void createDepthResources();
+    VkResult CreateDebugUtilsMessengerEXT(VkInstance instace, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
     void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
