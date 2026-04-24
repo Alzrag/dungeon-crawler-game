@@ -1,9 +1,9 @@
 #project name
 PROJECT_NAME=main
 #source file location
-SOURCE= main.cpp Engine.cpp helpers.cpp
+SOURCE= main.cpp Engine.cpp helpers.cpp 
 #any additional header files you need
-H_FILES = vertex_data.hpp helpers.h
+H_FILES = vertex_data.hpp helpers.h Engine.h
 #any additional resource files you need
 RSR_FILES = 
 #your name

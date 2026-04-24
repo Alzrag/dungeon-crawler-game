@@ -54,7 +54,6 @@ inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_vali
 class Engine {
   public:
     void run();
-  private:
     GLFWwindow* window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -163,8 +162,8 @@ class Engine {
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     // Buffers
-    void createVertexBuffer();
-    void createIndexBuffer();
+    void createVertexBuffer(const std::vector<Vertex>& verts, VkBuffer& outBuffer, VkDeviceMemory& outMemory);
+    void createIndexBuffer(const std::vector<uint32_t>& inds, VkBuffer& outBuffer, VkDeviceMemory& outMemory);
     void createUniformBuffers();
     void updateUniformBuffer(uint32_t currentImage);
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -176,6 +175,7 @@ class Engine {
     void createDescriptorSets();
 
     // Images and textures
+    void loadTextureFromPath(const std::string& path, VkImage& outImage, VkDeviceMemory& outMemory, VkImageView& outView, VkSampler& outSampler);
     void createTextureImage();
     void createTextureImageView();
     void createTextureSampler();
@@ -196,7 +196,7 @@ class Engine {
     void createSyncObjects();
 
     // Model
-    void loadModel();
+    void loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices);
 
     // Debug
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);

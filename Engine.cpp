@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "GameObject.h"
+#include "vertex_data.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -344,9 +345,9 @@ void Engine::initVulkan() {
   createTextureImage();
   createTextureImageView();
   createTextureSampler();
-  loadModel();
-  createVertexBuffer();
-  createIndexBuffer();
+  loadModel(MODEL_PATH, vertices, indices);
+  createVertexBuffer(vertices, vertexBuffer, vertexBufferMemory);
+  createIndexBuffer(indices, indexBuffer, indexBufferMemory);
   createUniformBuffers();
   createDescriptorPool();
   createDescriptorSets();
@@ -354,13 +355,13 @@ void Engine::initVulkan() {
   createSyncObjects();
 }
 
-void Engine::loadModel(){
+void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices){
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
   std::string err;
 
-  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str())){
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, path.c_str())){
     throw std::runtime_error(err);
   }
   
@@ -385,9 +386,9 @@ void Engine::loadModel(){
 
       if (uniqueVertices.count(vertex)==0){
         uniqueVertices[vertex]=static_cast<uint32_t>(vertices.size());
-        vertices.push_back(vertex);
+        outVertices.push_back(vertex);
       }
-      indices.push_back(uniqueVertices[vertex]);
+      outIndices.push_back(uniqueVertices[vertex]);
     }
   }
 }
@@ -456,6 +457,38 @@ VkImageView Engine::createImageView(VkImage image, VkFormat format, VkImageAspec
       throw std::runtime_error("failed to create image view!");
   }
   return imageView;
+}
+void Engine::loadTextureFromPath(const std::string& path, VkImage& outImage, VkDeviceMemory& outMemory, VkImageView& outView, VkSampler& outSampler) {
+  int texWidth, texHeight, texChannels;
+  stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  if (!pixels) throw std::runtime_error("failed to load texture: " + path);
+  VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer, stagingBufferMemory);
+  void* data;
+  vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+  memcpy(data, pixels, static_cast<size_t>(imageSize));
+  vkUnmapMemory(device, stagingBufferMemory);
+  stbi_image_free(pixels);
+
+  createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outImage, outMemory);
+  transitionImageLayout(outImage, VK_FORMAT_R8G8B8A8_SRGB,
+                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  copyBufferToImage(stagingBuffer, outImage, texWidth, texHeight);
+  transitionImageLayout(outImage, VK_FORMAT_R8G8B8A8_SRGB,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  vkDestroyBuffer(device, stagingBuffer, nullptr);
+  vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+  outView    = createImageView(outImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+  outSampler = textureSampler; // reuse the engine's sampler — same settings
 }
 
 void Engine::createTextureImageView(){
@@ -731,48 +764,50 @@ void Engine::createDescriptorSetLayout(){
   if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS){
     throw std::runtime_error("failed to create descriptor set layout");
   }
+
+  VkPushConstantRange pushConstantRange{};
+  pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  pushConstantRange.offset = 0;
+  pushConstantRange.size = sizeof(glm::mat4);
   
   VkPipelineLayoutCreateInfo piplineLayoutInfo{};
   piplineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   piplineLayoutInfo.setLayoutCount=1;
   piplineLayoutInfo.pSetLayouts=&descriptorSetLayout;
+  piplineLayoutInfo.pushConstantRangeCount = 1;
+  piplineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
   if (vkCreatePipelineLayout(device, &piplineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
     throw std::runtime_error("failed to create pipeline layout");
   }
 }
 
-void Engine::createIndexBuffer(){
-  VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+void Engine::createIndexBuffer(const std::vector<uint32_t>& inds, VkBuffer& outBuffer, VkDeviceMemory& outMemory) {
+  VkDeviceSize bufferSize = sizeof(inds[0]) * inds.size();
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
   createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
   void* data;
   vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-  memcpy(data, indices.data(), (size_t)bufferSize);
+  memcpy(data, inds.data(), (size_t)bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
-  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-  copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
+  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outBuffer, outMemory);
+  copyBuffer(stagingBuffer, outBuffer, bufferSize);
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void Engine::createVertexBuffer(){
-  VkDeviceSize bufferSize = sizeof(vertices[0])*vertices.size();
-
+void Engine::createVertexBuffer(const std::vector<Vertex>& verts, VkBuffer& outBuffer, VkDeviceMemory& outMemory) {
+  VkDeviceSize bufferSize = sizeof(verts[0]) * verts.size();
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
-  
   createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
   void* data;
-  vkMapMemory(device, stagingBufferMemory, 0, bufferSize,0,&data);
-  memcpy(data,vertices.data(),(size_t) bufferSize);
+  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, verts.data(), (size_t)bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
-  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-  
-  copyBuffer(stagingBuffer,vertexBuffer,bufferSize);
+  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outBuffer, outMemory);
+  copyBuffer(stagingBuffer, outBuffer, bufferSize);
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
@@ -1312,7 +1347,7 @@ void Engine::updateUniformBuffer(uint32_t currentImage){
   float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
   UniformBufferObject ubo{};//TODO
-  ubo.model=Gameobject->getModelMatrix;
+  //ubo.model=Gameobject->getModelMatrix;
   
   ubo.view=glm::lookAt(glm::vec3(2.0f,2.0f,2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,0.0f,1.0f));
   ubo.proj=glm::perspective(glm::radians(45.0f), swapChainExtent.width/(float)swapChainExtent.height, 0.1f, 10.0f);
