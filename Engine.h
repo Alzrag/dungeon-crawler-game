@@ -24,7 +24,7 @@
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+class fixed;
 //External
 #include <stb_image.h>
 #include <tiny_obj_loader.h>
@@ -53,7 +53,22 @@ inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_vali
 
 class Engine {
   public:
+    glm::vec3 cameraPos   = {0.0f, -5.0f, 3.0f};
+    glm::vec3 cameraFront = {0.0f,  1.0f, 0.0f};
+    glm::vec3 cameraUp    = {0.0f,  0.0f, 1.0f};
+    float cameraYaw   = 90.0f;
+    float cameraPitch = 0.0f;
+    void processInput();
+    std::vector<fixed*> sceneObjects;
+    void add(fixed* obj);
+    void remove(fixed* obj);
+    void init();
+    void loop();
     void run();
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkSampler textureSampler;
+    int MAX_FRAMES_IN_FLIGHT = 2;
     GLFWwindow* window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -62,6 +77,10 @@ class Engine {
     VkQueue graphicsQueue;
     VkSurfaceKHR surface;
     VkQueue presentQueue;
+    VkImage textureImage;
+    VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    std::vector<VkDescriptorSet> descriptorSets;
     const std::vector<const char*> deviceExtensions = { //used for the set of nessisary extension for your gpu to be valid
       VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
@@ -76,31 +95,18 @@ class Engine {
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
-    //dancing aroudn emmeory acsess issues
-    const int MAX_FRAMES_IN_FLIGHT = 2;
+    //dancing aroudn emmeory acsess issues 
     int currentFrame = 0;
     std::vector<VkSemaphore> imageAvailableSemaphores;//a semaphore as i unserstanding it a memory and event sensitive sleep statement
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;//a signaller for when something is done
     bool framebufferResized = false;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    VkSampler textureSampler;
+    std::vector<void*> uniformBuffersMapped; 
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
-
     struct QueueFamilyIndicies {
       std::optional<uint32_t> graphicsFamily;
       std::optional<uint32_t> presentFamily;

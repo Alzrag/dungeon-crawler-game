@@ -40,3 +40,5 @@ glm::mat4 Gameobject::getModelMatrix() const{
   return model;
 };
 
+Gameobject::~Gameobject() {};
+

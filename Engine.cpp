@@ -1,17 +1,40 @@
 #include "Engine.h"
 #include "GameObject.h"
 #include "vertex_data.hpp"
+#include "vulkan/vulkan_core.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
+#include "fixed.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+void Engine::init(){
+  initVulkan();
+}
+
+void Engine::loop(){
+  mainLoop();
+  cleanup();
+}
+
 void Engine::run() {
-initVulkan();
-mainLoop();
-cleanup();
+  init();
+  loop();
 } 
+
+void Engine::add(fixed* obj){
+  sceneObjects.push_back(obj);
+}
+
+void Engine::remove(fixed* obj){
+  for (size_t i = 0;i<sceneObjects.size();i++){
+    if (obj == sceneObjects[i]){
+      sceneObjects[i]=sceneObjects.back();
+      sceneObjects.back()=obj;
+      sceneObjects.pop_back();
+    }
+  }
+}
 
 void Engine::framebufferResizeCallback(GLFWwindow* window, int width, int height){
   auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
@@ -56,12 +79,9 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-  VkBuffer vertexBuffers[] = {vertexBuffer};
-  VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(commandBuffer,0,1,vertexBuffers, offsets);
-  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,0,1,&descriptorSets[currentFrame],0,nullptr);
-  vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()),1,0,0,0);
+  for (fixed* obj : sceneObjects){
+    obj->render(commandBuffer, pipelineLayout, currentFrame);
+  } 
 
   vkCmdEndRenderPass(commandBuffer);
   if(vkEndCommandBuffer(commandBuffer)!=VK_SUCCESS){
@@ -73,25 +93,28 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
   QueueFamilyIndicies indices;
   uint32_t queueFamilyCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);//get a list of queue families
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
   std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());//populate the list of quefamilties with data;
-  int i=0;
-  for (const auto& queueFamily :queueFamilies){
-    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT){
-      VkBool32 presentSupport = false;
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-      if (presentSupport){
-        indices.presentFamily = i;
-      }
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+  int i = 0;
+  for (const auto& queueFamily : queueFamilies) {
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
     }
-    if(indices.isComplete()){
+ 
+    VkBool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+    if (presentSupport) {
+      indices.presentFamily = i;
+    }
+
+    if (indices.isComplete()) {
       break;
     }
     i++;
   }
-  return indices  ;
+  return indices;
 }
 
 Engine::SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice device){
@@ -140,6 +163,7 @@ void Engine::pickPhysicalDevice(){
   vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
   std::multimap<int, VkPhysicalDevice> candidates;//sort them with a multimap ordred by their score
   for  (const auto& device : devices){
+    if(!isDeviceSuitable(device)) continue;
     int score = rateDeviceSuitability(device);
     candidates.insert(std::make_pair(score, device));
   }
@@ -298,8 +322,9 @@ void Engine::createInstance() {
   createInfo.ppEnabledExtensionNames = glfwExtensions;
   //part of ehwats above but this adds validation layer names when enabled  
   if (enableValidationLayers) {
-    createInfo.enabledLayerCount= static_cast<uint32_t>(validationLayers.size());
-    createInfo.ppEnabledLayerNames = validationLayers.data();
+    auto extensions = getRequiredExtensions(enableValidationLayers); // This should already include GLFW extensions
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
   } else {//otherwise leave it as is
     createInfo.enabledLayerCount = 0;
   }
@@ -320,12 +345,39 @@ void Engine::createInstance() {
   }
 } 
 
+void Engine::processInput() {
+  float speed = 0.05f;
+  glm::vec3 right = glm::normalize(glm::cross(cameraFront, cameraUp));
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cameraPos += speed * cameraFront;
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cameraPos -= speed * cameraFront;
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cameraPos -= speed * right;
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) cameraPos += speed * right;
+  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) cameraPos -= speed * cameraUp;
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) cameraPos += speed * cameraUp;
+
+  double mx, my;
+  glfwGetCursorPos(window, &mx, &my);
+  static double lastX = mx, lastY = my;
+  float dx = (mx - lastX) * 0.1f;
+  float dy = (lastY - my) * 0.1f;
+  lastX = mx; lastY = my;
+  cameraYaw   -= dx;
+  cameraPitch  = glm::clamp(cameraPitch + dy, -89.0f, 89.0f);
+  cameraFront = glm::normalize(glm::vec3(
+      cos(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch)),
+      sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch)),
+      sin(glm::radians(cameraPitch))
+  ));
+}
 void Engine::initVulkan() {
   glfwInit();//initialize glfw library
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);//dont use opengl use vulkan
   glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);//prevent resising window because thats hard (update its going to be a long night)
   
   window=glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr); //width height title monitor? openglstuff(share share resorce with anuther window for speed and basically shallow opy them)
+  
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
+
   glfwSetWindowUserPointer(window, this);
   glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
@@ -341,21 +393,21 @@ void Engine::initVulkan() {
   createGraphicsPipeline();
   createCommandPool();
   createDepthResources();
-  createFramebuffers();
+  createFramebuffers(); 
+  createTextureSampler();
   createTextureImage();
   createTextureImageView();
-  createTextureSampler();
-  loadModel(MODEL_PATH, vertices, indices);
-  createVertexBuffer(vertices, vertexBuffer, vertexBufferMemory);
-  createIndexBuffer(indices, indexBuffer, indexBufferMemory);
   createUniformBuffers();
   createDescriptorPool();
-  createDescriptorSets();
+  //createDescriptorSets();
   createCommandBuffer();
   createSyncObjects();
 }
 
 void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices){
+  vertices.clear();
+  indices.clear();
+
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -385,7 +437,7 @@ void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices
       vertex.color={1.0f,1.0f,1.0f};
 
       if (uniqueVertices.count(vertex)==0){
-        uniqueVertices[vertex]=static_cast<uint32_t>(vertices.size());
+        uniqueVertices[vertex]=static_cast<uint32_t>(outVertices.size());
         outVertices.push_back(vertex);
       }
       outIndices.push_back(uniqueVertices[vertex]);
@@ -664,16 +716,16 @@ void Engine::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, u
 void Engine::createDescriptorPool(){
   std::array<VkDescriptorPoolSize, 2> poolSizes{};
   poolSizes[0].type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[0].descriptorCount=static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolSizes[0].descriptorCount=static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT)*1048;
   poolSizes[1].type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount=static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolSizes[1].descriptorCount=static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT)*1048;
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
   poolInfo.poolSizeCount=static_cast<uint32_t>(poolSizes.size());
   poolInfo.pPoolSizes=poolSizes.data();
-  poolInfo.maxSets=static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
+  poolInfo.maxSets=static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT)*1024;
 
   if (vkCreateDescriptorPool(device, &poolInfo, nullptr,&descriptorPool)!=VK_SUCCESS){
     throw std::runtime_error("failed to create descirptor pool");
@@ -1054,13 +1106,12 @@ void Engine::createGraphicsPipeline(){
   rasterizer.polygonMode=VK_POLYGON_MODE_FILL;//look here when i start using textures
   rasterizer.lineWidth=1.0f;
   rasterizer.cullMode=VK_CULL_MODE_BACK_BIT;
-  rasterizer.frontFace=VK_FRONT_FACE_CLOCKWISE;
+  rasterizer.frontFace=VK_FRONT_FACE_COUNTER_CLOCKWISE;
   rasterizer.depthBiasEnable=VK_FALSE;//basically a deph stretch or shrink effect
   rasterizer.depthBiasConstantFactor=0.0f;
   rasterizer.depthBiasClamp=0.0f;
   rasterizer.depthBiasSlopeFactor=0.0f;
   rasterizer.cullMode=VK_CULL_MODE_BACK_BIT;
-  rasterizer.frontFace=VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
   //anti-aliasing
   VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -1095,15 +1146,15 @@ void Engine::createGraphicsPipeline(){
   colorBlending.blendConstants[2] = 0.0f;
   colorBlending.blendConstants[3] = 0.0f;
 
-  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount=1;
-  pipelineLayoutInfo.pSetLayouts=&descriptorSetLayout;
-  pipelineLayoutInfo.pushConstantRangeCount=0;
-  pipelineLayoutInfo.pPushConstantRanges=nullptr;
-  if(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)!=VK_SUCCESS){
-    throw std::runtime_error("failed to create pipeline layout!");
-  }
+  //VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+  //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  //pipelineLayoutInfo.setLayoutCount=1;
+  //pipelineLayoutInfo.pSetLayouts=&descriptorSetLayout;
+  //pipelineLayoutInfo.pushConstantRangeCount=0;
+  //pipelineLayoutInfo.pPushConstantRanges=nullptr;
+  //if(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)!=VK_SUCCESS){
+    //throw std::runtime_error("failed to create pipeline layout!");
+  //}
 
   VkPipelineDepthStencilStateCreateInfo depthStencil{};
   depthStencil.sType=VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -1213,8 +1264,7 @@ void Engine::createSwapChain() {
 }
 
 void Engine::createSurface() {
-  if (glfwCreateWindowSurface(instance, window, nullptr, &surface) !=
-      VK_SUCCESS) {
+  if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
     throw std::runtime_error("Failed to create window surface");
   }
 }
@@ -1248,6 +1298,7 @@ void Engine::createLogicalDevice() {
   } else {
     createInfo.enabledLayerCount = 0;
   }
+
   //try to create the logic device
   if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS){
     throw std::runtime_error("failed to create logical device!");
@@ -1284,6 +1335,7 @@ void Engine::setupDebugMessenger() {
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(window)){//while window is not closed
     glfwPollEvents();//starts collecting user input
+    processInput();
     drawFrame();
     // glfwSetWindowShouldClose(window, GLFW_TRUE); //force close for checking on wayland commented out becuase this is bad
   }
@@ -1347,9 +1399,9 @@ void Engine::updateUniformBuffer(uint32_t currentImage){
   float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
   UniformBufferObject ubo{};//TODO
-  //ubo.model=Gameobject->getModelMatrix;
+  ubo.model=glm::mat4(1.0f);
   
-  ubo.view=glm::lookAt(glm::vec3(2.0f,2.0f,2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,0.0f,1.0f));
+  ubo.view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   ubo.proj=glm::perspective(glm::radians(45.0f), swapChainExtent.width/(float)swapChainExtent.height, 0.1f, 10.0f);
   ubo.proj[1][1]*=-1;
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
@@ -1398,11 +1450,13 @@ void Engine::cleanup() {
 
     //timing and sync objects
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
-        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-        vkDestroyFence(device, inFlightFences[i], nullptr);
+      vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+      vkDestroyFence(device, inFlightFences[i], nullptr);
     }
-
+    for (size_t i = 0; i < renderFinishedSemaphores.size(); i++){
+      vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+    }
+  
     //UBO's and descriptions
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
         vkDestroyBuffer(device, uniformBuffers[i], nullptr);
@@ -1415,12 +1469,7 @@ void Engine::cleanup() {
     vkDestroySampler(device, textureSampler, nullptr);
     vkDestroyImageView(device, textureImageView, nullptr);
     vkDestroyImage(device, textureImage, nullptr);
-    vkFreeMemory(device, textureImageMemory, nullptr);
-
-    vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, indexBufferMemory, nullptr);
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
+    vkFreeMemory(device, textureImageMemory, nullptr); 
 
     //Pipeline and render
     vkDestroyPipeline(device, graphicsPipeline, nullptr);

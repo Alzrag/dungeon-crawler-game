@@ -5,7 +5,7 @@
 class static_object : public Gameobject{
 public:
   void update(float deltaTime, std::vector<Gameobject*>& sceneObjects);
-  virtual void onCollision(Gameobject* other)=0;
+  void onCollision(Gameobject* other);
   virtual ~static_object();
 
 protected:

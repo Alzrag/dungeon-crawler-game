@@ -62,3 +62,5 @@ void static_object::onCollision(Gameobject* other){
 
   Position-=correction;
 }
+
+static_object::~static_object() {}
