@@ -38,6 +38,9 @@ ifeq ($(OS),Windows_NT)
   VULKAN_SCRIPT     = powershell -ExecutionPolicy Bypass -File install_vulkan.ps1
   SHADER_SCRIPT     = compile_windows.bat
 
+  LIBSTDCXX_PATH := $(shell g++ -print-file-name=libstdc++.a)
+  LIBSTDCXX_DIR  := $(dir $(LIBSTDCXX_PATH))
+
   VULKAN_SDK_PATH ?= $(VULKAN_SDK)
   ifeq ($(VULKAN_SDK_PATH),)
     VULKAN_SDK_PATH = C:/VulkanSDK/1.4.341.1
@@ -47,8 +50,10 @@ ifeq ($(OS),Windows_NT)
   CXX_FLAGS += -I"$(VULKAN_SDK_PATH)/Include"
   LDFLAGS    = $(GLFW_LIB) \
                -L"$(VULKAN_SDK_PATH)/Lib" \
+               -L"$(LIBSTDCXX_DIR)" \
                -lvulkan-1 \
-               -lgdi32 -luser32 -lshell32
+               -lgdi32 -luser32 -lshell32 \
+               -lstdc++
 
   GLFW_FLAGS = -D_GLFW_WIN32 -Iexternal/glfw-3.4/include -Iexternal/glfw-3.4/src
   GLFW_SRCS  = \
@@ -170,10 +175,11 @@ endif
 
 clean:
 ifeq ($(OS),Windows_NT)
-	-del /Q main.exe main.o shaders\vert.spv shaders\frag.spv 2>nul
-	-del /Q external\glfw-3.4\build\src\libglfw3.a 2>nul
-	-del /Q external\glfw-3.4\src\*.glfw.o 2>nul
-	-del /Q "$(BUILD_OS_FILE)" 2>nul
+	-del /Q main.exe main.o shaders\vert.spv shaders\frag.spv 2>NUL
+	-del /Q external\glfw-3.4\build\src\libglfw3.a 2>NUL
+	-del /Q external\glfw-3.4\src\*.glfw.o 2>NUL
+	-del /Q "$(BUILD_OS_FILE)" 2>NUL
+	-cmd /c "del /F /Q \\?\$(CURDIR)\nul" 2>NUL
 else
 	$(DEL) $(TARGET) $(OBJECTS) $(VERT_SPV) $(FRAG_SPV)
 	$(DEL) $(GLFW_LIB) $(GLFW_SRC)/*.glfw.o $(BUILD_OS_FILE)
