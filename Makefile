@@ -106,10 +106,10 @@ ifeq ($(OS),Windows_NT)
 			if not "%%i"=="$(PLATFORM)" ( \
 				echo [OS] Platform changed from %%i to $(PLATFORM) - wiping all build artifacts... & \
 				if exist "external\glfw-3.4\build\src\libglfw3.a" del /Q "external\glfw-3.4\build\src\libglfw3.a" & \
-				if exist "external\glfw-3.4\src\*.glfw.o" del /Q "external\glfw-3.4\src\*.glfw.o" & \
+				for %%f in (external\glfw-3.4\src\*.glfw.o) do del /Q "%%f" & \
 				if exist "shaders\vert.spv" del /Q "shaders\vert.spv" & \
 				if exist "shaders\frag.spv" del /Q "shaders\frag.spv" & \
-				if exist "main.o" del /Q "main.o" & \
+				for %%f in (*.o) do del /Q "%%f" & \
 				if exist "main.exe" del /Q "main.exe" \
 			) \
 		) \
