@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "GameObject.h"
 #include "vertex_data.hpp"
 #include "vulkan/vulkan_core.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -78,8 +79,9 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-  for (fixed* obj : sceneObjects){
-    obj->render(commandBuffer, pipelineLayout, currentFrame);
+  for (Gameobject* obj : sceneObjects){
+    fixed* f = dynamic_cast<fixed*>(obj);
+    if (f) f->render(commandBuffer, pipelineLayout, currentFrame);
   } 
 
   vkCmdEndRenderPass(commandBuffer);
@@ -346,14 +348,16 @@ void Engine::createInstance() {
 
 void Engine::processInput() {
   float speed = 0.05f;
-  glm::vec3 right = glm::normalize(glm::cross(cameraFront, cameraUp));
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cameraPos += speed * cameraFront;
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cameraPos -= speed * cameraFront;
-  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cameraPos -= speed * right;
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) cameraPos += speed * right;
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) cameraPos -= speed * cameraUp;
-  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) cameraPos += speed * cameraUp;
-
+  glm::vec3 flatFront = glm::normalize(glm::vec3(cameraFront.x, cameraFront.y, 0.0f));
+  glm::vec3 right = glm::normalize(glm::cross(flatFront, cameraUp));
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    cameraPos += speed * flatFront;
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    cameraPos -= speed * flatFront;
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    cameraPos -= speed * right;
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    cameraPos += speed * right;
   double mx, my;
   glfwGetCursorPos(window, &mx, &my);
   static double lastX = mx, lastY = my;
@@ -404,9 +408,6 @@ void Engine::initVulkan() {
 }
 
 void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices) {
-  vertices.clear();
-  indices.clear();
-
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -1341,6 +1342,13 @@ void Engine::mainLoop() {
     processInput();
     
     if (onUpdate) onUpdate(*this);
+
+    for (Gameobject* obj : sceneObjects){
+      static_object *s = dynamic_cast<static_object *>(obj);
+      if (s) s->update(0.0f, sceneObjects);
+    }
+
+    if (player) cameraPos = player->Position;
 
     drawFrame();
     // glfwSetWindowShouldClose(window, GLFW_TRUE); //force close for checking on wayland commented out becuase this is bad

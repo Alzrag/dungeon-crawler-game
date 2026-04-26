@@ -60,7 +60,7 @@ void static_object::onCollision(Gameobject* other){
     correction=glm::vec3(0,0,-overlapNZ);
   }
 
-  Position-=correction;
+  other->Position+=correction;
 }
 
 static_object::~static_object() {}

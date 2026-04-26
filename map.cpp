@@ -65,22 +65,22 @@ void print_map(const std::vector<std::vector<char>>& room){
 
 std::vector<fixed> convertMap(const std::vector<std::vector<char>>& room, Engine& app){
   std::vector<fixed> map3d;
-  float x=room.size();
-  float y=room[0].size();
-  fixed floor;
-  floor.init("models/wall.obj", "textures/brick_Wall.png", app);
-  floor.Scale={x,y,1.0f};
-  floor.Position={x/2, y/2, -1.0f};
-  
-  map3d.push_back(floor);
+  map3d.reserve(1 + room.size() * room[0].size());
 
-  for (size_t i =0;i<room.size();i++){
-    for (size_t j = 0;j<room[0].size();j++){
+  float x = room.size();
+  float y = room[0].size();
+
+  map3d.push_back(fixed{});
+  map3d.back().init("models/wall.obj", "textures/brick_Wall.png", app);
+  map3d.back().Scale    = {x, y, 1.0f};
+  map3d.back().Position = {x/2, y/2, -1.0f};
+
+  for (size_t i = 0; i < room.size(); i++){
+    for (size_t j = 0; j < room[0].size(); j++){
       if (room[i][j] == '#'){
-        fixed wall;
-        wall.init("models/wall.obj", "textures/brick_Wall.png", app);
-        wall.Position={static_cast<float>(i),static_cast<float>(j),0.0f};
-        map3d.push_back(wall);
+        map3d.push_back(fixed{});
+        map3d.back().init("models/wall.obj", "textures/brick_Wall.png", app);
+        map3d.back().Position = {static_cast<float>(i), static_cast<float>(j), 0.0f};
       }
     }
   }

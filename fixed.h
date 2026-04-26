@@ -33,6 +33,5 @@ class fixed : public static_object{
     void update(float deltaTime) override {}
     void render() override {}
     void init() override {}
-    void onCollision(Gameobject* other) override;
 };
 

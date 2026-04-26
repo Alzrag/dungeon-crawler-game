@@ -1,6 +1,7 @@
 #pragma once
 
 //Core
+#include "GameObject.h"
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -32,6 +33,7 @@ class fixed;
 //Project Files
 #include "vertex_data.hpp"
 #include "helpers.h"
+#include "staticobject.h"
 
 
 inline const uint32_t WIDTH = 800;
@@ -59,13 +61,15 @@ class Engine {
       onUpdate = cb;
     }
 
-    glm::vec3 cameraPos   = {0.0f, -5.0f, 3.0f};
+    Gameobject* player = nullptr;
+
+    glm::vec3 cameraPos   = {1.0f, 1.0f, 0.0f};
     glm::vec3 cameraFront = {0.0f,  1.0f, 0.0f};
     glm::vec3 cameraUp    = {0.0f,  0.0f, 1.0f};
     float cameraYaw   = 90.0f;
     float cameraPitch = 0.0f;
     void processInput();
-    std::vector<fixed*> sceneObjects;
+    std::vector<Gameobject*> sceneObjects;
     void add(fixed* obj);
     void remove(fixed* obj);
     void init();

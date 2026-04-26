@@ -15,6 +15,14 @@ void fixed::init(const std::string& modelPath, const std::string& texturePath, E
     gameEngine.loadModel(modelPath, vertices, indices);
     gameEngine.createVertexBuffer(vertices, localVertexBuffer, localVertexBufferMemory);
     gameEngine.createIndexBuffer(indices, localIndexBuffer, localIndexBufferMemory);
+    if (hasModel) {
+      aabbMin = vertices[0].pos;
+      aabbMax = vertices[0].pos;
+      for (const auto& v : vertices) {
+        aabbMin = glm::min(aabbMin, v.pos);
+        aabbMax = glm::max(aabbMax, v.pos);
+      }
+    }
     if (std::ifstream(texturePath)) {
       gameEngine.loadTextureFromPath(texturePath, localTextureImage, localTextureMemory, localTextureImageView, localTextureSampler);
       hasTexture = true;
@@ -103,8 +111,4 @@ fixed::~fixed(){
     vkFreeMemory(engineDevice, localTextureMemory, nullptr);
     vkDestroyImageView(engineDevice, localTextureImageView, nullptr);
   }
-}
-
-void fixed::onCollision(Gameobject* other) {
-    // Your collision logic here
 }
