@@ -20,6 +20,8 @@ class fixed : public static_object{
     std::vector<VkDescriptorSet> descriptorSets;
     int localVerts;
     int localInds;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
     VkBuffer localVertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory localVertexBufferMemory = VK_NULL_HANDLE;
     VkBuffer localIndexBuffer = VK_NULL_HANDLE;

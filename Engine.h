@@ -17,6 +17,7 @@
 #include <fstream>
 #include <chrono>
 #include <unordered_map>
+#include <functional>
 
 //GLM
 #define GLM_FORCE_RADIANS
@@ -52,6 +53,12 @@ inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_vali
 
 class Engine {
   public:
+    std::function<void(Engine&)> onUpdate = nullptr;
+
+    void setUpdateCallback(std::function<void(Engine&)> cb) {
+      onUpdate = cb;
+    }
+
     glm::vec3 cameraPos   = {0.0f, -5.0f, 3.0f};
     glm::vec3 cameraFront = {0.0f,  1.0f, 0.0f};
     glm::vec3 cameraUp    = {0.0f,  0.0f, 1.0f};

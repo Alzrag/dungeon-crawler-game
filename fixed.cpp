@@ -5,7 +5,8 @@
 #include "vulkan/vulkan_core.h"
 
 void fixed::init(const std::string& modelPath, const std::string& texturePath, Engine& gameEngine){
-  engineDevice = gameEngine.device;  
+  engineDevice = gameEngine.device;
+  enginePool    = gameEngine.descriptorPool;
   hasTexture  = false;
 
   if (std::ifstream(modelPath)){

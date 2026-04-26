@@ -1,5 +1,4 @@
 #include "Engine.h"
-#include "GameObject.h"
 #include "vertex_data.hpp"
 #include "vulkan/vulkan_core.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -369,6 +368,7 @@ void Engine::processInput() {
       sin(glm::radians(cameraPitch))
   ));
 }
+
 void Engine::initVulkan() {
   glfwInit();//initialize glfw library
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);//dont use opengl use vulkan
@@ -399,12 +399,11 @@ void Engine::initVulkan() {
   createTextureImageView();
   createUniformBuffers();
   createDescriptorPool();
-  //createDescriptorSets();
   createCommandBuffer();
   createSyncObjects();
 }
 
-void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices){
+void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices) {
   vertices.clear();
   indices.clear();
 
@@ -413,31 +412,35 @@ void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices
   std::vector<tinyobj::material_t> materials;
   std::string err;
 
-  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, path.c_str())){
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, path.c_str())) {
     throw std::runtime_error(err);
   }
-  
+
   std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 
-  for (const auto& shape:shapes){
-    for (const auto& index : shape.mesh.indices){
+  for (const auto& shape : shapes) {
+    for (const auto& index : shape.mesh.indices) {
       Vertex vertex{};
 
-      vertex.pos = {
-        attrib.vertices[3*index.vertex_index+0],
-        attrib.vertices[3*index.vertex_index+1],
-        attrib.vertices[3*index.vertex_index+2]
-      };
+      vertex.pos = {attrib.vertices[3 * index.vertex_index + 0], attrib.vertices[3 * index.vertex_index + 1], attrib.vertices[3 * index.vertex_index + 2]};
 
-      vertex.texCoord={
-        attrib.texcoords[2*index.texcoord_index+0],
-        1.0f-attrib.texcoords[2*index.texcoord_index+1]
-      };
+      glm::vec3 p = vertex.pos;
+      glm::vec3 n = {0.0f, 0.0f, 1.0f};
+      if (index.normal_index >= 0 && !attrib.normals.empty())
+        n = {attrib.normals[3 * index.normal_index + 0], attrib.normals[3 * index.normal_index + 1], attrib.normals[3 * index.normal_index + 2]};
 
-      vertex.color={1.0f,1.0f,1.0f};
+      glm::vec3 a = glm::abs(n);
+      if (a.x >= a.y && a.x >= a.z)
+        vertex.texCoord = {p.y + 0.5f, p.z + 0.5f};
+      else if (a.y >= a.x && a.y >= a.z)
+        vertex.texCoord = {p.x + 0.5f, p.z + 0.5f};
+      else
+        vertex.texCoord = {p.x + 0.5f, p.y + 0.5f};
 
-      if (uniqueVertices.count(vertex)==0){
-        uniqueVertices[vertex]=static_cast<uint32_t>(outVertices.size());
+      vertex.color = {1.0f, 1.0f, 1.0f};
+
+      if (uniqueVertices.count(vertex) == 0) {
+        uniqueVertices[vertex] = static_cast<uint32_t>(outVertices.size());
         outVertices.push_back(vertex);
       }
       outIndices.push_back(uniqueVertices[vertex]);
@@ -1336,6 +1339,9 @@ void Engine::mainLoop() {
   while (!glfwWindowShouldClose(window)){//while window is not closed
     glfwPollEvents();//starts collecting user input
     processInput();
+    
+    if (onUpdate) onUpdate(*this);
+
     drawFrame();
     // glfwSetWindowShouldClose(window, GLFW_TRUE); //force close for checking on wayland commented out becuase this is bad
   }

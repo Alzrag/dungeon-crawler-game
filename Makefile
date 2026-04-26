@@ -1,9 +1,9 @@
 #project name
 PROJECT_NAME=main
 #source file location
-SOURCE= main.cpp Engine.cpp helpers.cpp GameObject.cpp staticobject.cpp fixed.cpp
+SOURCE= main.cpp Engine.cpp helpers.cpp GameObject.cpp staticobject.cpp fixed.cpp map.cpp
 #any additional header files you need
-H_FILES = vertex_data.hpp helpers.h Engine.h GameObject.h staticobject.h fixed.h
+H_FILES = vertex_data.hpp helpers.h Engine.h GameObject.h staticobject.h fixed.h map.h
 #any additional resource files you need
 RSR_FILES = 
 #your name
