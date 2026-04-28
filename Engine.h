@@ -62,7 +62,7 @@ class Engine {
     }
 
     Gameobject* player = nullptr;
-
+    int playerHealth=100;
     glm::vec3 cameraPos   = {1.0f, 1.0f, 0.0f};
     glm::vec3 cameraFront = {0.0f,  1.0f, 0.0f};
     glm::vec3 cameraUp    = {0.0f,  0.0f, 1.0f};

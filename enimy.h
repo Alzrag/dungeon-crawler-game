@@ -3,19 +3,25 @@
 #include "Engine.h"
 #include "GameObject.h"
 #include "fixed.h"
+#include <glm/ext/vector_float3.hpp>
 #include <vector>
+#include <random>
+#include <string>
 
 class enimy {
   public:
-    std::vector<std::vector<char>> spawn(std::vector<std::vector<char>> map, fixed object, Engine& game);
-    void takeDamage();
-    std::vector<std::vector<char>> move(std::vector<std::vector<char>> map);
+    enimy(std::vector<std::vector<char>>* map, fixed object, Engine* game);
+    void takeDamage(int amount);
+    void move();
+    void hurt();
   private:
-    int state;
-    int health = (((level-1)*10)+20);
-    int damage = (((level-1)*10)+20);
+    glm::vec3 position;
+    std::string state;
+    int health;
+    int damage;
     int level;
     fixed self;
-    Engine& app;
+    Engine* app;
+    std::vector<std::vector<char>>* map;
 };
 
