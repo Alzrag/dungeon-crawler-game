@@ -2,6 +2,7 @@
 #include "fixed.h"
 #include "map.h"
 #include <memory>
+#include "enimy.h"
 
 int main() {
   Engine app;  
@@ -17,6 +18,13 @@ int main() {
       app.add(map.back().get());
     }
 
+    fixed enimyF;
+    enimyF.init("models/little_robot.obj", "textures/material12.png", app);
+    std::vector<std::unique_ptr<enimy>> enemies;
+    enemies.reserve(100);
+    for (int i = 0; i < 100; i++) {
+      enemies.push_back(std::make_unique<enimy>(&mapTxt, enimyF, &app));
+    }
     fixed player;
     player.init("", "", app);
     player.aabbMin = {-0.3f, -0.3f, -0.9f};

@@ -10,10 +10,12 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, fixed object, Engine* game){
   level=1;
   health = (((level-1)*10)+20);
   damage = (((level-1)*10)+20);
-  map = mapIn; 
+  map = mapIn;
+  self=object;
+  app->add(&self);
   std::uniform_int_distribution<int> pos(1,map->size());
   position = {pos(mt), pos(mt), 1.0f};
-  while (mapIn->at(position.x+1).at(position.y+1)!=' '){
+  while (mapIn->at(position.x).at(position.y)!=' '){
     position = {pos(mt), pos(mt), 1.0f};
   }
 }
@@ -60,6 +62,18 @@ bool isValid(int x,int y, const std::vector<std::vector<char>>& Maze){
   if(y<0||y>=Maze.size()||x<0||x>=Maze[0].size()) return false;
   if(Maze[y][x]=='#') return false;
   return true;
+}
+
+template <typename Iterator>
+void reverse(Iterator begin, Iterator end) {
+  --end;
+  while (begin < end) {
+    auto temp = *begin;
+    *begin = *end;
+    *end = temp;
+    begin++;
+    end--;
+  }
 }
 
 std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
@@ -141,9 +155,9 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
   return {};
 }
 
-
 void enimy::move(){
   if (state == "wander"){
+    float dt=app->dt;
     if (!moving) {
       if (pathQueue.empty()) {
         glm::vec3 target;

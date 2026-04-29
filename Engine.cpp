@@ -2,6 +2,7 @@
 #include "GameObject.h"
 #include "vertex_data.hpp"
 #include "vulkan/vulkan_core.h"
+#include <chrono>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include "fixed.h"
@@ -1337,7 +1338,12 @@ void Engine::setupDebugMessenger() {
 }
 
 void Engine::mainLoop() {
+  auto lastTime = std::chrono::high_resolution_clock::now();
   while (!glfwWindowShouldClose(window)){//while window is not closed
+    auto now = std::chrono::high_resolution_clock::now();
+    dt = std::chrono::duration<float>(now - lastTime).count();
+    lastTime=now;
+    
     glfwPollEvents();//starts collecting user input
     processInput();
     

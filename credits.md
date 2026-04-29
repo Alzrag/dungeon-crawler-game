@@ -17,3 +17,5 @@ Included assets include:
 https://be-a-fish-studios.itch.io/pixel-normals-brick (wall textures)
   modified to desired color and added vines
   free for educational and personal use
+
+https://sketchfab.com/3d-models/little-robot-bdeed0bfd067419da32d82d9ddbcc239#download

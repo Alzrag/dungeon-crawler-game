@@ -60,7 +60,7 @@ class Engine {
     void setUpdateCallback(std::function<void(Engine&)> cb) {
       onUpdate = cb;
     }
-
+    float dt = 0.0f;
     Gameobject* player = nullptr;
     int playerHealth=100;
     glm::vec3 cameraPos   = {1.0f, 1.0f, 0.0f};
