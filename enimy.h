@@ -7,6 +7,7 @@
 #include <vector>
 #include <random>
 #include <string>
+#include <deque>
 
 class enimy {
   public:
@@ -23,5 +24,10 @@ class enimy {
     fixed self;
     Engine* app;
     std::vector<std::vector<char>>* map;
+    std::deque<glm::vec3> pathQueue;
+    glm::vec3 currentPos;
+    glm::vec3 targetPos;
+    float moveSpeed = 5.0f;
+    bool moving = false;
 };
 
