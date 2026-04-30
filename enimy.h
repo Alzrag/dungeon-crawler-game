@@ -11,7 +11,7 @@
 
 class enimy {
   public:
-    enimy(std::vector<std::vector<char>>* map, fixed object, Engine* game);
+    enimy(std::vector<std::vector<char>>* map, const fixed& object, Engine* game);
     void takeDamage(int amount);
     void move();
     void hurt();
@@ -24,10 +24,12 @@ class enimy {
     fixed self;
     Engine* app;
     std::vector<std::vector<char>>* map;
+    void stateTransition();
+    glm::vec3 newPosition;
     std::deque<glm::vec3> pathQueue;
     glm::vec3 currentPos;
     glm::vec3 targetPos;
     float moveSpeed = 5.0f;
-    bool moving = false;
+    bool moving = false; 
 };
 

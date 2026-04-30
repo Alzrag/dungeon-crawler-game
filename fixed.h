@@ -30,8 +30,8 @@ class fixed : public static_object{
     VkDeviceMemory localTextureMemory = VK_NULL_HANDLE;
     VkImageView localTextureImageView = VK_NULL_HANDLE;
     VkSampler localTextureSampler = VK_NULL_HANDLE;
-    void update(float deltaTime) override {}
-    void render() override {}
-    void init() override {}
+    void update(float deltaTime) override;
+    void render() override;
+    void init() override;
 };
 

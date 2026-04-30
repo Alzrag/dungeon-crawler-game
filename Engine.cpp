@@ -1422,7 +1422,7 @@ void Engine::updateUniformBuffer(uint32_t currentImage){
   ubo.model=glm::mat4(1.0f);
   
   ubo.view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  ubo.proj=glm::perspective(glm::radians(45.0f), swapChainExtent.width/(float)swapChainExtent.height, 0.1f, 10.0f);
+  ubo.proj=glm::perspective(glm::radians(45.0f), swapChainExtent.width/(float)swapChainExtent.height, 0.1f, 1000.0f);
   ubo.proj[1][1]*=-1;
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

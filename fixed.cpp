@@ -93,6 +93,10 @@ void fixed::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayou
   vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
 }
 
+void fixed::update(float) {}
+void fixed::render() {}
+void fixed::init() {}
+
 fixed::~fixed(){
   if(engineDevice==VK_NULL_HANDLE) return;
   if (!descriptorSets.empty() && enginePool != VK_NULL_HANDLE){

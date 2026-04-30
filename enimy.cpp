@@ -5,7 +5,7 @@
 std::random_device rd;
 std::mt19937 mt(rd());
 
-enimy::enimy(std::vector<std::vector<char>>* mapIn, fixed object, Engine* game){
+enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine* game){
   app = game;
   level=1;
   health = (((level-1)*10)+20);
@@ -13,15 +13,15 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, fixed object, Engine* game){
   map = mapIn;
   self=object;
   app->add(&self);
-  std::uniform_int_distribution<int> pos(1,map->size());
-  position = {pos(mt), pos(mt), 1.0f};
-  while (mapIn->at(position.x).at(position.y)!=' '){
+  std::uniform_int_distribution<int> pos(0, (int)map->size()-1);
+  newPosition = {pos(mt), pos(mt), 1.0f};
+  while (mapIn->at((int)newPosition.y).at((int)newPosition.x)!=' '){
     position = {pos(mt), pos(mt), 1.0f};
   }
 }
 
 void enimy::takeDamage(int amount){
-  health=health+=amount;
+  health+=amount;
 }
 
 void enimy::hurt(){
@@ -155,12 +155,91 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
   return {};
 }
 
+std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
+  std::cout<<"started solve"<<std::endl;
+  int rows = Maze.size();
+  int cols=Maze[0].size();
+  node* start=nullptr;
+  node* end(nullptr);
+  std::vector<std::vector<node>> grid(rows, std::vector<node>(cols));
+
+  //build grid
+  for (int y = 0; y<rows;y++){
+    for (int x = 0;x<cols;x++){
+      grid[y][x].y=y;
+      grid[y][x].x=x;
+      if (Maze[y][x]=='E') start=&grid[y][x];
+      if (Maze[y][x]=='S') end=&grid[y][x];
+    }
+  }
+  
+  std::vector<node*> open;
+  start->set(start->x,start->y,0,distance(start->x, end->x, start->y, end->y), nullptr);
+  open.push_back(start);
+
+  while(!open.empty()){
+    int bestOp=0;
+    for (int i=1;i<(int)open.size();i++){
+      if(open[i]->f<open[bestOp]->f){
+        bestOp=i;
+      }
+    }
+    node* current = open[bestOp];
+
+    if(current->x==end->x&&current->y==end->y){ 
+      std::vector<glm::vec3> path;
+      node* temp = current->parrent;
+      while(temp!=nullptr&&Maze[temp->y][temp->x]!='E'){
+        path.push_back({(float)temp->x, (float)temp->y, 1.0f});
+        temp=temp->parrent;
+      }
+      reverse(path.begin(), path.end());
+      return path;
+    }
+
+    open.erase(open.begin()+bestOp);
+    current->closed=true;
+    if(Maze[current->y][current->x]!='E'&&Maze[current->y][current->x]!='S')Maze[current->y][current->x]='V';
+
+    int dx[]={0,0,-1,1};
+    int dy[]={-1,1,0,0};
+
+    for (int i=0;i<4;i++){
+      int nx=current->x+dx[i];
+      int ny=current->y+dy[i];
+
+      if (isValid(nx, ny, Maze)){
+        node* neighbor =&grid[ny][nx]; 
+        if (neighbor->closed){
+          continue;
+        }
+        float g = current->g+1.0f;
+        if(!neighbor->open||g<neighbor->g){
+          neighbor->set(nx,ny,g,distance(nx, end->x, ny, end->y), current);
+          bool allreadyOpened=false;
+          for (node* n: open){
+            if(n==neighbor){
+              allreadyOpened=true;
+              break;
+            }
+          }
+          if(!allreadyOpened){
+            open.push_back(neighbor);
+            if(Maze[neighbor->y][neighbor->x]!='E'&&Maze[neighbor->y][neighbor->x]!='S')Maze[neighbor->y][neighbor->x]='N';
+          }
+        }
+      }
+    }
+  }
+  return {};
+}
+
 void enimy::move(){
   if (state == "wander"){
     float dt=app->dt;
     if (!moving) {
       if (pathQueue.empty()) {
-        glm::vec3 target;
+        glm::vec3 target = newPosition;
         std::uniform_int_distribution<int> pos(1,map->size());
         glm::vec3 newPosition = {pos(mt), pos(mt), 1.0f};
         while (map->at(position.y).at(position.x)!=' '){
@@ -176,8 +255,33 @@ void enimy::move(){
         }
       }
       if (!pathQueue.empty()){
-        position = pathQueue.front();
-        pathQueue.pop_back();
+        targetPos = pathQueue.front();
+        pathQueue.pop_front();
+        moving=true;
+      }
+    } else {
+      glm::vec3 dir = glm::normalize(targetPos - currentPos);
+      currentPos += dir * moveSpeed * dt;
+      if (glm::distance(currentPos, targetPos) < moveSpeed * dt)
+        currentPos = targetPos;
+    }
+    position=currentPos;
+  } else if (state == "chase"){
+    float dt=app->dt;
+    if (!moving) {
+      if (pathQueue.empty()) {
+        std::vector<std::vector<char>> tempMap=*map;
+        tempMap.at((int)position.y).at((int)position.x) = 'E'; 
+        tempMap.at(static_cast<int>(app->cameraPos.y)).at(static_cast<int>(app->cameraPos.x)) = 'S';
+
+        std::vector<glm::vec3> newPath = playerDistance(tempMap);
+        for (auto& step: newPath){
+          pathQueue.push_back(step);
+        }
+      }
+      if (!pathQueue.empty()){
+        targetPos = pathQueue.front();
+        pathQueue.pop_front();
         moving=true;
       }
     } else {
@@ -188,11 +292,17 @@ void enimy::move(){
     }
     position=currentPos;
   }
-
 }
 
-void stateTransition(){
-
+void enimy::stateTransition(){
+  int pdis=(int)playerDistance(*map).size();
+  if (pdis <=3){
+    state="attack";
+  } else if (pdis<=5){
+    state="chase";
+  } else {
+    state="wander";
+  }
 }
 
 
