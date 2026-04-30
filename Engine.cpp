@@ -352,13 +352,13 @@ void Engine::processInput() {
   glm::vec3 flatFront = glm::normalize(glm::vec3(cameraFront.x, cameraFront.y, 0.0f));
   glm::vec3 right = glm::normalize(glm::cross(flatFront, cameraUp));
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    cameraPos += speed * flatFront;
+    player->Position += speed * flatFront;
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    cameraPos -= speed * flatFront;
+    player->Position -= speed * flatFront;
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    cameraPos -= speed * right;
+    player->Position -= speed * right;
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    cameraPos += speed * right;
+    player->Position += speed * right;
   double mx, my;
   glfwGetCursorPos(window, &mx, &my);
   static double lastX = mx, lastY = my;

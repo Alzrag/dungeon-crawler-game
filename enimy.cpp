@@ -11,13 +11,16 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine*
   health = (((level-1)*10)+20);
   damage = (((level-1)*10)+20);
   map = mapIn;
-  self=object;
-  app->add(&self);
+  self = object;
   std::uniform_int_distribution<int> pos(0, (int)map->size()-1);
   newPosition = {pos(mt), pos(mt), 1.0f};
   while (mapIn->at((int)newPosition.y).at((int)newPosition.x)!=' '){
-    position = {pos(mt), pos(mt), 1.0f};
+    newPosition = {pos(mt), pos(mt), 1.0f};
   }
+  position=newPosition;
+  currentPos=newPosition;
+  app->add(&self);
+  state="wander";
 }
 
 void enimy::takeDamage(int amount){
@@ -242,7 +245,7 @@ void enimy::move(){
         glm::vec3 target = newPosition;
         std::uniform_int_distribution<int> pos(1,map->size());
         glm::vec3 newPosition = {pos(mt), pos(mt), 1.0f};
-        while (map->at(position.y).at(position.x)!=' '){
+        while (map->at(newPosition.y).at(newPosition.x)!=' '){
           newPosition = {pos(mt), pos(mt), 1.0f};
         }
         std::vector<std::vector<char>> tempMap=*map;
@@ -295,7 +298,10 @@ void enimy::move(){
 }
 
 void enimy::stateTransition(){
-  int pdis=(int)playerDistance(*map).size();
+  std::vector<std::vector<char>> tempMap = *map;
+  tempMap.at((int)position.y).at((int)position.x) = 'E';
+  tempMap.at(static_cast<int>(app->cameraPos.y)).at(static_cast<int>(app->cameraPos.x)) = 'S';
+  int pdis = (int)playerDistance(tempMap).size();
   if (pdis <=3){
     state="attack";
   } else if (pdis<=5){

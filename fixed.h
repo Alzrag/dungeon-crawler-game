@@ -14,7 +14,11 @@ class fixed : public static_object{
     void init(const std::string& modelPath, const std::string& texturePath, Engine& gameEngine);
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int frameIndex); 
     ~fixed() override;
+    fixed(const fixed& other);
+    fixed()=default;
+    fixed& operator=(const fixed& other);
   private:
+    Engine* engine = nullptr;
     VkDevice engineDevice= VK_NULL_HANDLE;
     VkDescriptorPool enginePool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
@@ -33,5 +37,6 @@ class fixed : public static_object{
     void update(float deltaTime) override;
     void render() override;
     void init() override;
+    std::string texturePath;
 };
 
