@@ -15,6 +15,7 @@ class enimy {
     void takeDamage(int amount);
     void move();
     void hurt();
+    void stateTransition();
   private:
     glm::vec3 position;
     std::string state;
@@ -24,7 +25,6 @@ class enimy {
     fixed self;
     Engine* app;
     std::vector<std::vector<char>>* map;
-    void stateTransition();
     glm::vec3 newPosition;
     std::deque<glm::vec3> pathQueue;
     glm::vec3 currentPos;

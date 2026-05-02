@@ -28,6 +28,8 @@ public:
   bool hasTexture;
   bool hasCollider;
 
+  bool isWall = false;
+
   virtual void update(float deltaTime)=0;
 
   virtual void render()=0;

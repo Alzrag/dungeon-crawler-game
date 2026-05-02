@@ -28,6 +28,7 @@ bool static_object::checkAABB(Gameobject* other){
 }
 
 void static_object::onCollision(Gameobject* other){
+  if (other->isWall) return;
   glm::vec3 selfCenter  = Position + (aabbMin + aabbMax) * 0.5f;
   glm::vec3 otherCenter = other->Position + (other->aabbMin + other->aabbMax) * 0.5f;
 

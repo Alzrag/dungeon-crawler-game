@@ -158,9 +158,10 @@ fixed& fixed::operator=(const fixed& other){
   indexCount = other.indexCount;
   localVerts = other.localVerts;
   localInds = other.localInds;
-
   engineDevice = other.engineDevice;
-  enginePool   = other.enginePool;
+  enginePool = other.enginePool;
+  engine = other.engine;
+  texturePath = other.texturePath;
 
   if (engineDevice == VK_NULL_HANDLE || !other.hasModel) return *this;
 

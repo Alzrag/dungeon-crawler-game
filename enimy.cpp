@@ -12,13 +12,18 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine*
   damage = (((level-1)*10)+20);
   map = mapIn;
   self = object;
-  std::uniform_int_distribution<int> pos(0, (int)map->size()-1);
-  newPosition = {pos(mt), pos(mt), 1.0f};
-  while (mapIn->at((int)newPosition.y).at((int)newPosition.x)!=' '){
-    newPosition = {pos(mt), pos(mt), 1.0f};
+  std::uniform_int_distribution<int> posRow(0, (int)map->size()-1);
+  std::uniform_int_distribution<int> posCol(0, (int)(*map)[0].size()-1);
+  newPosition = {posRow(mt), posCol(mt), 1.0f};
+  while (mapIn->at((int)newPosition.x).at((int)newPosition.y)!=' '){
+    newPosition = {posRow(mt), posCol(mt), 1.0f};
   }
   position=newPosition;
   currentPos=newPosition;
+  self.Position = {newPosition.x, newPosition.y, 0.0f};
+  position = newPosition;
+  currentPos = newPosition;
+  app->add(&self);
   app->add(&self);
   state="wander";
 }
@@ -96,7 +101,7 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
       if (Maze[y][x]=='S') end=&grid[y][x];
     }
   }
-  
+  if (start == nullptr || end == nullptr) return {};
   std::vector<node*> open;
   start->set(start->x,start->y,0,distance(start->x, end->x, start->y, end->y), nullptr);
   open.push_back(start);
@@ -175,7 +180,7 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
       if (Maze[y][x]=='S') end=&grid[y][x];
     }
   }
-  
+  if (start == nullptr || end == nullptr) return {};
   std::vector<node*> open;
   start->set(start->x,start->y,0,distance(start->x, end->x, start->y, end->y), nullptr);
   open.push_back(start);
@@ -243,14 +248,15 @@ void enimy::move(){
     if (!moving) {
       if (pathQueue.empty()) {
         glm::vec3 target = newPosition;
-        std::uniform_int_distribution<int> pos(1,map->size());
-        glm::vec3 newPosition = {pos(mt), pos(mt), 1.0f};
-        while (map->at(newPosition.y).at(newPosition.x)!=' '){
-          newPosition = {pos(mt), pos(mt), 1.0f};
+        std::uniform_int_distribution<int> pos(1, (int)map->size()-1);
+        glm::vec3 newDest = {(float)pos(mt), (float)pos(mt), 1.0f};
+        while (map->at((int)newDest.y).at((int)newDest.x) != ' '){
+          newDest = {(float)pos(mt), (float)pos(mt), 1.0f};
         }
-        std::vector<std::vector<char>> tempMap=*map;
-        tempMap.at((int)position.y).at((int)position.x) = 'E';
-        tempMap.at((int)target.y).at((int)target.x) = 'S';
+        newPosition = newDest;
+        std::vector<std::vector<char>> tempMap = *map;
+        tempMap.at((int)position.x).at((int)position.y) = 'E';
+        tempMap.at((int)newDest.x).at((int)newDest.y) = 'S';
 
         std::vector<glm::vec3> newPath = solveMaze(tempMap);
         for (auto& step: newPath){
@@ -265,17 +271,21 @@ void enimy::move(){
     } else {
       glm::vec3 dir = glm::normalize(targetPos - currentPos);
       currentPos += dir * moveSpeed * dt;
-      if (glm::distance(currentPos, targetPos) < moveSpeed * dt)
+      if (glm::distance(currentPos, targetPos) < moveSpeed * dt){
         currentPos = targetPos;
+        moving = false;
+        position = {std::round(currentPos.x), std::round(currentPos.y), 1.0f};
+      }
     }
-    position=currentPos;
+    position = {std::round(currentPos.x), std::round(currentPos.y), 1.0f};
+    self.Position = {currentPos.x, currentPos.y, 0.0f};
   } else if (state == "chase"){
     float dt=app->dt;
     if (!moving) {
       if (pathQueue.empty()) {
         std::vector<std::vector<char>> tempMap=*map;
-        tempMap.at((int)position.y).at((int)position.x) = 'E'; 
-        tempMap.at(static_cast<int>(app->cameraPos.y)).at(static_cast<int>(app->cameraPos.x)) = 'S';
+        tempMap.at((int)position.x).at((int)position.y) = 'E'; 
+        tempMap.at(static_cast<int>(app->cameraPos.x)).at(static_cast<int>(app->cameraPos.y)) = 'S';
 
         std::vector<glm::vec3> newPath = playerDistance(tempMap);
         for (auto& step: newPath){
@@ -290,16 +300,20 @@ void enimy::move(){
     } else {
       glm::vec3 dir = glm::normalize(targetPos - currentPos);
       currentPos += dir * moveSpeed * dt;
-      if (glm::distance(currentPos, targetPos) < moveSpeed * dt)
+      if (glm::distance(currentPos, targetPos) < moveSpeed * dt){
         currentPos = targetPos;
+        moving = false;
+        position = {std::round(currentPos.x), std::round(currentPos.y), 1.0f};
+      }
     }
-    position=currentPos;
+    position = {std::round(currentPos.x), std::round(currentPos.y), 1.0f};
+    self.Position = {currentPos.x, currentPos.y, 0.0f};
   }
 }
 
 void enimy::stateTransition(){
   std::vector<std::vector<char>> tempMap = *map;
-  tempMap.at((int)position.y).at((int)position.x) = 'E';
+  tempMap.at((int)position.x).at((int)position.y) = 'E';
   tempMap.at(static_cast<int>(app->cameraPos.y)).at(static_cast<int>(app->cameraPos.x)) = 'S';
   int pdis = (int)playerDistance(tempMap).size();
   if (pdis <=3){
@@ -309,6 +323,7 @@ void enimy::stateTransition(){
   } else {
     state="wander";
   }
+  move();
 }
 
 

@@ -20,12 +20,13 @@ int main() {
     std::cerr << "map added to scene" << std::endl;
 
     fixed enimyF;
+    enimyF.Scale={0.5,0.5,0.5};
     enimyF.init("models/little_robot.obj", "textures/material12.png", app);
     std::cerr << "enimyF init done" << std::endl;
 
     std::vector<std::unique_ptr<enimy>> enemies;
-    enemies.reserve(100);
-    for (int i = 0; i < 100; i++) {
+    enemies.reserve(3);
+    for (int i = 0; i < 3; i++) {
       enemies.push_back(std::make_unique<enimy>(&mapTxt, enimyF, &app));
       std::cerr << "enemy " << i << " created" << std::endl;
     }
@@ -34,11 +35,16 @@ int main() {
     player.init("", "", app);
     player.aabbMin = {-0.3f, -0.3f, -0.9f};
     player.aabbMax = { 0.3f,  0.3f,  0.9f};
-    player.Position = glm::vec3(1.0f, 1.0f, 10.0f);//debug mode fly above the map
+    player.Position = glm::vec3(1.0f, 1.0f, 0.0f);//debug mode fly above the map
     player.hasCollider = true;
     app.player = &player;
     app.add(&player);
 
+    app.setUpdateCallback([&enemies](Engine& e) {
+      for (auto& enemy : enemies) {
+        enemy->stateTransition();
+      }
+    });
     app.loop();
     std::cerr << "loop exited" << std::endl;
   } catch (const std::exception& e) {
@@ -46,4 +52,4 @@ int main() {
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
-}
+};
