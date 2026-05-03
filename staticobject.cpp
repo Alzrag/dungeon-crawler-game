@@ -18,50 +18,62 @@ void static_object::update(float deltaTime, std::vector<Gameobject*>& sceneObjec
 }
 
 bool static_object::checkAABB(Gameobject* other){
-  if (this->aabbMax.x+Position.x < other->aabbMin.x+other->Position.x) return false;
-  if (this->aabbMin.x+Position.x > other->aabbMax.x+other->Position.x) return false;
-  if (this->aabbMax.y+Position.y < other->aabbMin.y+other->Position.y) return false;
-  if (this->aabbMin.y+Position.y > other->aabbMax.y+other->Position.y) return false;
-  if (this->aabbMax.z+Position.z < other->aabbMin.z+other->Position.z) return false;
-  if (this->aabbMin.z+Position.z > other->aabbMax.z+other->Position.z) return false;
+  glm::vec3 selfMin  = aabbMin * Scale + Position;
+  glm::vec3 selfMax  = aabbMax * Scale + Position;
+  glm::vec3 otherMin = other->aabbMin * other->Scale + other->Position;
+  glm::vec3 otherMax = other->aabbMax * other->Scale + other->Position;
+  if (selfMax.x < otherMin.x) return false;
+  if (selfMin.x > otherMax.x) return false;
+  if (selfMax.y < otherMin.y) return false;
+  if (selfMin.y > otherMax.y) return false;
+  if (selfMax.z < otherMin.z) return false;
+  if (selfMin.z > otherMax.z) return false;
   return true;
 }
 
 void static_object::onCollision(Gameobject* other){
   if (other->isWall) return;
-  glm::vec3 selfCenter  = Position + (aabbMin + aabbMax) * 0.5f;
-  glm::vec3 otherCenter = other->Position + (other->aabbMin + other->aabbMax) * 0.5f;
+  if (!this->isWall) return;
 
-  float overlapX = (aabbMax.x + Position.x) - (other->aabbMin.x + other->Position.x);
-  float overlapNX = (other->aabbMax.x + other->Position.x) - (aabbMin.x + Position.x);
-  float overlapY = (aabbMax.y + Position.y) - (other->aabbMin.y + other->Position.y);
-  float overlapNY = (other->aabbMax.y + other->Position.y) - (aabbMin.y + Position.y);
-  float overlapZ = (aabbMax.z + Position.z) - (other->aabbMin.z + other->Position.z);
-  float overlapNZ = (other->aabbMax.z + other->Position.z) - (aabbMin.z + Position.z);
+  glm::vec3 selfMin  = aabbMin * Scale + Position;
+  glm::vec3 selfMax  = aabbMax * Scale + Position;
+  glm::vec3 otherMin = other->aabbMin * other->Scale + other->Position;
+  glm::vec3 otherMax = other->aabbMax * other->Scale + other->Position;
+
+  glm::vec3 selfCenter  = (selfMin + selfMax) * 0.5f;
+  glm::vec3 otherCenter = (otherMin + otherMax) * 0.5f;
+  glm::vec3 dir = otherCenter - selfCenter;
+
+  float overlapX  = selfMax.x  - otherMin.x;
+  float overlapNX = otherMax.x - selfMin.x;
+  float overlapY  = selfMax.y  - otherMin.y;
+  float overlapNY = otherMax.y - selfMin.y;
+  float overlapZ  = selfMax.z  - otherMin.z;
+  float overlapNZ = otherMax.z - selfMin.z;
 
   float minOverlap = overlapX;
-  glm::vec3 correction = glm::vec3(overlapX,0,0);
-  if(overlapNX<minOverlap){
-    minOverlap=overlapNX;
-    correction=glm::vec3(-overlapNX,0,0);
+  glm::vec3 correction = glm::vec3(dir.x > 0 ? overlapX : -overlapX, 0, 0);
+  if(overlapNX < minOverlap){
+    minOverlap = overlapNX;
+    correction = glm::vec3(dir.x > 0 ? overlapNX : -overlapNX, 0, 0);
   }
-  if(overlapY<minOverlap){
-    minOverlap=overlapY;
-    correction=glm::vec3(0,overlapY,0);
+  if(overlapY  < minOverlap){
+    minOverlap = overlapY; 
+    correction = glm::vec3(0, dir.y > 0 ? overlapY  : -overlapY,  0);
   }
-  if(overlapNY<minOverlap){
-    minOverlap=overlapNY;
-    correction=glm::vec3(0,-overlapNY,0);
+  if(overlapNY < minOverlap){
+    minOverlap = overlapNY;
+    correction = glm::vec3(0, dir.y > 0 ? overlapNY : -overlapNY, 0);
   }
-  if(overlapZ<minOverlap){
-    minOverlap=overlapZ;
-    correction=glm::vec3(0,0,overlapZ);
+  if(overlapZ  < minOverlap){
+    minOverlap = overlapZ;
+    correction = glm::vec3(0, 0, dir.z > 0 ? overlapZ  : -overlapZ );
   }
-  if(overlapNZ<minOverlap){
-    correction=glm::vec3(0,0,-overlapNZ);
+  if(overlapNZ < minOverlap){
+    correction = glm::vec3(0, 0, dir.z > 0 ? overlapNZ : -overlapNZ);
   }
 
-  other->Position+=correction;
+  other->Position += correction;
 }
 
 static_object::~static_object() {}

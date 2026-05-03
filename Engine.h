@@ -55,9 +55,8 @@ inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_vali
 
 class Engine {
   public:
-    std::function<void(Engine&)> onUpdate = nullptr;
-
-    void setUpdateCallback(std::function<void(Engine&)> cb) {
+    void (*onUpdate)(Engine&) = nullptr;
+    void setUpdateCallback(void (*cb)(Engine&)) {
       onUpdate = cb;
     }
     float dt = 0.0f;

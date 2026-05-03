@@ -1,6 +1,7 @@
 #include "enimy.h"
 #include <glm/geometric.hpp>
 #include <random>
+#include "map.h"
 
 std::random_device rd;
 std::mt19937 mt(rd());
@@ -23,8 +24,7 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine*
   self.Position = {newPosition.x, newPosition.y, 0.0f};
   position = newPosition;
   currentPos = newPosition;
-  app->add(&self);
-  app->add(&self);
+  app->add(&self); 
   state="wander";
 }
 
@@ -33,7 +33,7 @@ void enimy::takeDamage(int amount){
 }
 
 void enimy::hurt(){
-  app->playerHealth+=damage;
+  app->playerHealth+=damage; 
 }
 
 struct node {
@@ -84,8 +84,7 @@ void reverse(Iterator begin, Iterator end) {
   }
 }
 
-std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
-  std::cout<<"started solve"<<std::endl;
+std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){ 
   int rows = Maze.size();
   int cols=Maze[0].size();
   node* start=nullptr;
@@ -119,10 +118,10 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
       std::vector<glm::vec3> path;
       node* temp = current->parrent;
       while(temp!=nullptr&&Maze[temp->y][temp->x]!='E'){
-        path.push_back({(float)temp->x, (float)temp->y, 1.0f});
+        path.push_back({(float)temp->y, (float)temp->x, 1.0f});
         temp=temp->parrent;
       }
-      reverse(path.begin(), path.end());
+      if (!path.empty()) reverse(path.begin(), path.end());
       return path;
     }
 
@@ -164,7 +163,6 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
 }
 
 std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
-  std::cout<<"started solve"<<std::endl;
   int rows = Maze.size();
   int cols=Maze[0].size();
   node* start=nullptr;
@@ -198,10 +196,10 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
       std::vector<glm::vec3> path;
       node* temp = current->parrent;
       while(temp!=nullptr&&Maze[temp->y][temp->x]!='E'){
-        path.push_back({(float)temp->x, (float)temp->y, 1.0f});
+        path.push_back({(float)temp->y, (float)temp->x, 1.0f});
         temp=temp->parrent;
       }
-      reverse(path.begin(), path.end());
+      if (!path.empty()) reverse(path.begin(), path.end());
       return path;
     }
 
@@ -248,10 +246,11 @@ void enimy::move(){
     if (!moving) {
       if (pathQueue.empty()) {
         glm::vec3 target = newPosition;
-        std::uniform_int_distribution<int> pos(1, (int)map->size()-1);
-        glm::vec3 newDest = {(float)pos(mt), (float)pos(mt), 1.0f};
-        while (map->at((int)newDest.y).at((int)newDest.x) != ' '){
-          newDest = {(float)pos(mt), (float)pos(mt), 1.0f};
+        std::uniform_int_distribution<int> posRow(1, (int)map->size()-1);
+        std::uniform_int_distribution<int> posCol(1, (int)(*map)[0].size()-1);
+        glm::vec3 newDest = {(float)posRow(mt), (float)posCol(mt), 1.0f};
+        while (map->at((int)newDest.x).at((int)newDest.y) != ' '){
+          newDest = {(float)posRow(mt), (float)posCol(mt), 1.0f};
         }
         newPosition = newDest;
         std::vector<std::vector<char>> tempMap = *map;
@@ -269,8 +268,11 @@ void enimy::move(){
         moving=true;
       }
     } else {
-      glm::vec3 dir = glm::normalize(targetPos - currentPos);
-      currentPos += dir * moveSpeed * dt;
+      glm::vec3 diff = targetPos - currentPos;
+      if (glm::length(diff) > 0.0001f) {
+        glm::vec3 dir = glm::normalize(diff);
+        currentPos += dir * moveSpeed * dt;
+      }
       if (glm::distance(currentPos, targetPos) < moveSpeed * dt){
         currentPos = targetPos;
         moving = false;
@@ -286,7 +288,6 @@ void enimy::move(){
         std::vector<std::vector<char>> tempMap=*map;
         tempMap.at((int)position.x).at((int)position.y) = 'E'; 
         tempMap.at(static_cast<int>(app->cameraPos.x)).at(static_cast<int>(app->cameraPos.y)) = 'S';
-
         std::vector<glm::vec3> newPath = playerDistance(tempMap);
         for (auto& step: newPath){
           pathQueue.push_back(step);
@@ -298,8 +299,11 @@ void enimy::move(){
         moving=true;
       }
     } else {
-      glm::vec3 dir = glm::normalize(targetPos - currentPos);
-      currentPos += dir * moveSpeed * dt;
+      glm::vec3 diff = targetPos - currentPos;
+      if (glm::length(diff) > 0.0001f) {
+        glm::vec3 dir = glm::normalize(diff);
+        currentPos += dir * moveSpeed * dt;
+      }
       if (glm::distance(currentPos, targetPos) < moveSpeed * dt){
         currentPos = targetPos;
         moving = false;
@@ -313,14 +317,19 @@ void enimy::move(){
 
 void enimy::stateTransition(){
   std::vector<std::vector<char>> tempMap = *map;
+  //print_map(tempMap);
   tempMap.at((int)position.x).at((int)position.y) = 'E';
-  tempMap.at(static_cast<int>(app->cameraPos.y)).at(static_cast<int>(app->cameraPos.x)) = 'S';
+  tempMap.at(static_cast<int>(app->cameraPos.x)).at(static_cast<int>(app->cameraPos.y)) = 'S';
   int pdis = (int)playerDistance(tempMap).size();
-  if (pdis <=3){
-    state="attack";
-  } else if (pdis<=5){
+  std::cout<<"pdis is: "<<pdis<<std::endl;
+  if (pdis<=5){
     state="chase";
+    std::cout<<"chaseing"<<std::endl;
+    if (pdis <=1){
+      hurt();
+    }
   } else {
+    std::cout<<"wandering"<<std::endl;
     state="wander";
   }
   move();
