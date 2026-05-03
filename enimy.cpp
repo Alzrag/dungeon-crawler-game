@@ -10,7 +10,7 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine*
   app = game;
   level=1;
   health = (((level-1)*10)+20);
-  damage = (((level-1)*10)+20);
+  damage = -1*(((level-1)*10)+20);
   map = mapIn;
   self = object;
   std::uniform_int_distribution<int> posRow(0, (int)map->size()-1);
@@ -33,7 +33,8 @@ void enimy::takeDamage(int amount){
 }
 
 void enimy::hurt(){
-  app->playerHealth+=damage; 
+  app->playerHealth+=damage;
+  std::cout<<"you have been hurt your health is now: "<<app->playerHealth<<std::endl;
 }
 
 struct node {
@@ -316,22 +317,27 @@ void enimy::move(){
 }
 
 void enimy::stateTransition(){
+  std::string oldState = state;
+
   std::vector<std::vector<char>> tempMap = *map;
-  //print_map(tempMap);
   tempMap.at((int)position.x).at((int)position.y) = 'E';
   tempMap.at(static_cast<int>(app->cameraPos.x)).at(static_cast<int>(app->cameraPos.y)) = 'S';
   int pdis = (int)playerDistance(tempMap).size();
-  std::cout<<"pdis is: "<<pdis<<std::endl;
-  if (pdis<=5){
-    state="chase";
-    std::cout<<"chaseing"<<std::endl;
-    if (pdis <=1){
+
+  if (pdis <= 5){
+    state = "chase";
+    if (pdis <= 1){
       hurt();
     }
   } else {
-    std::cout<<"wandering"<<std::endl;
-    state="wander";
+    state = "wander";
   }
+
+  if (state != oldState){
+    pathQueue.clear();
+    moving = false;
+  }
+
   move();
 }
 

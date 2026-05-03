@@ -1,7 +1,6 @@
 #include "Engine.h"
 #include "fixed.h"
 #include "map.h"
-#include <memory>
 #include "enimy.h"
 
 struct UpdateState {
@@ -30,9 +29,9 @@ int main() {
     std::vector<std::vector<char>> mapTxt = generate_map(10, 10, 12);
     std::cerr << "map generated" << std::endl;
 
-    std::vector<std::unique_ptr<fixed>> map = convertMap(mapTxt, app);
-    for (auto& block : map){
-      app.add(block.get());
+    std::vector<fixed*> map = convertMap(mapTxt, app);
+    for (int i = 0; i < (int)map.size(); i++){
+      app.add(map[i]);
     }
     std::cerr << "map added to scene" << std::endl;
 
@@ -51,6 +50,7 @@ int main() {
     app.add(&player);
     int* playerhealth=&app.playerHealth;
 
+    app.playerHealth=1000;
     for (int i = 0; i < 3; i++) {
       enemyPtrs[i] = new enimy(&mapTxt, enimyF, &app);
       std::cerr << "enemy " << i << " created" << std::endl;

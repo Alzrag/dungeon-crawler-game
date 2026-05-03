@@ -18,7 +18,6 @@
 #include <fstream>
 #include <chrono>
 #include <unordered_map>
-#include <functional>
 
 //GLM
 #define GLM_FORCE_RADIANS
