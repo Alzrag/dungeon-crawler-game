@@ -1,7 +1,7 @@
 #include "staticobject.h"
 #include "GameObject.h"
 
-void static_object::update(float deltaTime, std::vector<Gameobject*>& sceneObjects){
+void static_object::update([[maybe_unused]] float deltaTime, std::vector<Gameobject*>& sceneObjects){
   if (!hasCollider){
     return;
   }
@@ -16,6 +16,8 @@ void static_object::update(float deltaTime, std::vector<Gameobject*>& sceneObjec
     }
   }
 }
+
+void static_object::update([[maybe_unused]] float deltaTime) {}
 
 bool static_object::checkAABB(Gameobject* other){
   glm::vec3 selfMin  = aabbMin * Scale + Position;

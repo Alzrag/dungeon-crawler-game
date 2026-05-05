@@ -12,7 +12,7 @@
 class fixed : public static_object{
   public:
     void init(const std::string& modelPath, const std::string& texturePath, Engine& gameEngine);
-    void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int frameIndex); 
+    void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, uint32_t frameIndex); 
     ~fixed() override;
     fixed(const fixed& other);
     fixed()=default;

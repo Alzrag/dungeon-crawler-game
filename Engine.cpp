@@ -37,7 +37,7 @@ void Engine::remove(fixed* obj){
   }
 }
 
-void Engine::framebufferResizeCallback(GLFWwindow* window, int width, int height){
+void Engine::framebufferResizeCallback(GLFWwindow* window, [[maybe_unused]] int width, [[maybe_unused]] int height){
   width+=0;//i prevent warnings
   height+=0;//i prevent warnings
   auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
@@ -84,7 +84,7 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
   for (Gameobject* obj : sceneObjects){
     fixed* f = dynamic_cast<fixed*>(obj);
-    if (f) f->render(commandBuffer, pipelineLayout, currentFrame);
+    if (f) f->render(commandBuffer, pipelineLayout, static_cast<int>(currentFrame));
   } 
 
   vkCmdEndRenderPass(commandBuffer);
@@ -101,7 +101,7 @@ Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice dev){
   std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
   vkGetPhysicalDeviceQueueFamilyProperties(dev, &queueFamilyCount, queueFamilies.data());
 
-  int i = 0;
+  uint32_t i = 0;
   for (const auto& queueFamily : queueFamilies) {
     if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
@@ -426,12 +426,12 @@ void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices
     for (const auto& index : shape.mesh.indices) {
       Vertex vertex{};
 
-      vertex.pos = {attrib.vertices[3 * index.vertex_index + 0], attrib.vertices[3 * index.vertex_index + 1], attrib.vertices[3 * index.vertex_index + 2]};
+      vertex.pos = {attrib.vertices[3 * static_cast<size_t>(index.vertex_index) + 0], attrib.vertices[3 * static_cast<size_t>(index.vertex_index) + 1], attrib.vertices[3 * static_cast<size_t>(index.vertex_index) + 2]};
 
       glm::vec3 p = vertex.pos;
       glm::vec3 n = {0.0f, 0.0f, 1.0f};
       if (index.normal_index >= 0 && !attrib.normals.empty())
-        n = {attrib.normals[3 * index.normal_index + 0], attrib.normals[3 * index.normal_index + 1], attrib.normals[3 * index.normal_index + 2]};
+        n = {attrib.normals[3 * static_cast<size_t>(index.normal_index) + 0], attrib.normals[3 * static_cast<size_t>(index.normal_index) + 1], attrib.normals[3 * static_cast<size_t>(index.normal_index) + 2]};
 
       glm::vec3 a = glm::abs(n);
       if (a.x >= a.y && a.x >= a.z)
@@ -521,7 +521,7 @@ void Engine::loadTextureFromPath(const std::string& path, VkImage& outImage, VkD
   int texWidth, texHeight, texChannels;
   stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
   if (!pixels) throw std::runtime_error("failed to load texture: " + path);
-  VkDeviceSize imageSize = texWidth * texHeight * 4;
+  VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth) * static_cast<VkDeviceSize>(texHeight) * 4;
 
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
@@ -534,15 +534,10 @@ void Engine::loadTextureFromPath(const std::string& path, VkImage& outImage, VkD
   vkUnmapMemory(device, stagingBufferMemory);
   stbi_image_free(pixels);
 
-  createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outImage, outMemory);
-  transitionImageLayout(outImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  copyBufferToImage(stagingBuffer, outImage, texWidth, texHeight);
-  transitionImageLayout(outImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  createImage(static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outImage, outMemory);
+  transitionImageLayout(outImage, VK_FORMAT_R8G8B8A8_SRGB,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  copyBufferToImage(stagingBuffer, outImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+  transitionImageLayout(outImage, VK_FORMAT_R8G8B8A8_SRGB,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 
@@ -557,7 +552,7 @@ void Engine::createTextureImageView(){
 void Engine::createTextureImage(){
   int texWidth, texHeight, texChannels;
   stbi_uc* pixels =stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-  VkDeviceSize imageSize=texWidth*texHeight*4;
+  VkDeviceSize imageSize=static_cast<VkDeviceSize>(texWidth)*static_cast<VkDeviceSize>(texHeight)*4;
   if(!pixels){
     throw std::runtime_error("failed to loard/find texture image");
   }
@@ -572,7 +567,7 @@ void Engine::createTextureImage(){
   vkUnmapMemory(device, stagingBufferMemory);
   stbi_image_free(pixels);
   
-  createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+  createImage(static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
   transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
@@ -930,7 +925,7 @@ void Engine::createSyncObjects(){
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
   
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
     if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
       vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS){
       throw std::runtime_error("failed to create sync objects");

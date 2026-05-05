@@ -76,7 +76,7 @@ class Engine {
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkSampler textureSampler;
-    int MAX_FRAMES_IN_FLIGHT = 2;
+    uint32_t MAX_FRAMES_IN_FLIGHT = 2;
     GLFWwindow* window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -104,7 +104,7 @@ class Engine {
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
     //dancing aroudn emmeory acsess issues 
-    int currentFrame = 0;
+    uint32_t currentFrame = 0;
     std::vector<VkSemaphore> imageAvailableSemaphores;//a semaphore as i unserstanding it a memory and event sensitive sleep statement
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;//a signaller for when something is done

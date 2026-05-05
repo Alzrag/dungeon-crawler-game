@@ -55,7 +55,7 @@ std::vector<char> readFile(const std::string& filename){
   std::vector<char> buffer(fileSize);
 
   file.seekg(0);
-  file.read(buffer.data(), fileSize);
+  file.read(buffer.data(), static_cast<std::streamsize>(fileSize));
   file.close();
   return buffer;
 }

@@ -4,15 +4,15 @@
 #include "vertex_data.hpp"
 #include "vulkan/vulkan_core.h"
 
-void fixed::init(const std::string& modelPath, const std::string& texturePath, Engine& gameEngine){
+void fixed::init(const std::string& modelPath, const std::string& tPath, Engine& gameEngine){
   engineDevice = gameEngine.device;
-  enginePool    = gameEngine.descriptorPool;
-  hasTexture  = false;
-  this->texturePath=texturePath;
+  enginePool = gameEngine.descriptorPool;
+  hasTexture = false;
+  this->texturePath = tPath;
   engine=&gameEngine;
 
   if (std::ifstream(modelPath)){
-    hasModel    = true;
+    hasModel = true;
     hasCollider = true;
     gameEngine.loadModel(modelPath, vertices, indices);
     gameEngine.createVertexBuffer(vertices, localVertexBuffer, localVertexBufferMemory);
@@ -48,8 +48,7 @@ void fixed::init(const std::string& modelPath, const std::string& texturePath, E
     if (vkAllocateDescriptorSets(gameEngine.device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
       throw std::runtime_error("failed to allocate per-object descreptor sets");
 
-    for (int i = 0; i < gameEngine.MAX_FRAMES_IN_FLIGHT; i++) {
-      VkDescriptorBufferInfo bufferInfo{};
+    for (uint32_t i = 0; i < gameEngine.MAX_FRAMES_IN_FLIGHT; i++) {      VkDescriptorBufferInfo bufferInfo{};
       bufferInfo.buffer = gameEngine.uniformBuffers[i];
       bufferInfo.offset = 0;
       bufferInfo.range = sizeof(Engine::UniformBufferObject);
@@ -78,7 +77,7 @@ void fixed::init(const std::string& modelPath, const std::string& texturePath, E
     }
 }
 
-void fixed::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int frameIndex){ 
+void fixed::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, uint32_t frameIndex){
   if (!hasModel) return;
 
   VkBuffer vertexBuffers[] = { localVertexBuffer };
@@ -186,7 +185,7 @@ fixed& fixed::operator=(const fixed& other){
   descriptorSets.resize(engine->MAX_FRAMES_IN_FLIGHT);
   if (vkAllocateDescriptorSets(engineDevice, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
     throw std::runtime_error("failed to allocate descriptor sets in copy");
-  for (int i = 0; i < engine->MAX_FRAMES_IN_FLIGHT; i++) {
+  for (uint32_t i = 0; i < engine->MAX_FRAMES_IN_FLIGHT; i++) {
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = engine->uniformBuffers[i];
     bufferInfo.offset = 0;
