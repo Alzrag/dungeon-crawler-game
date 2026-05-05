@@ -4,12 +4,12 @@
 
 std::vector<std::vector<char>> generate_map(int width, int height, unsigned int seed) {
   using namespace std;
-  int rows = height * 2 + 1;
-  int cols = width * 2 + 1;
+  size_t rows = static_cast<size_t>(height) * 2 + 1;
+  size_t cols = static_cast<size_t>(width) * 2 + 1;
   vector<vector<char>> room(rows, vector<char>(cols, '#'));
   mt19937 gen(seed);
 
-  int start_row = 1, start_col = 1;
+  size_t start_row = 1, start_col = 1;
   room[start_row][start_col] = ' ';
   stack<pair<int,int>> cellStack;
   cellStack.push({start_row, start_col});
@@ -19,17 +19,17 @@ std::vector<std::vector<char>> generate_map(int width, int height, unsigned int 
     std::pair<int,int> rc = cellStack.top();
     int r = rc.first, c = rc.second;
     vector<pair<int,int>> neighbors;
-    for (int d = 0; d < (int)dirs.size(); d++) {
+    for (size_t d = 0; d < dirs.size(); d++) {
       int dr = dirs[d].first, dc = dirs[d].second;
       int nr = r + dr, nc = c + dc;
-      if (nr > 0 && nr < rows-1 && nc > 0 && nc < cols-1 && room[nr][nc]=='#') neighbors.push_back({nr,nc});
+      if (nr > 0 && nr < (int)rows-1 && nc > 0 && nc < (int)cols-1 && room[static_cast<size_t>(nr)][static_cast<size_t>(nc)]=='#') neighbors.push_back({nr,nc});
     }
     if (!neighbors.empty()) {
-      uniform_int_distribution<int> dist(0, neighbors.size()-1);
-      std::pair<int,int> nrnc = neighbors[dist(gen)];
+      uniform_int_distribution<int> dist(0, static_cast<int>(neighbors.size())-1);
+      std::pair<int,int> nrnc = neighbors[static_cast<size_t>(dist(gen))];
       int nr = nrnc.first, nc = nrnc.second;
-      room[(r+nr)/2][(c+nc)/2] = ' ';
-      room[nr][nc] = ' ';
+      room[static_cast<size_t>((r+nr)/2)][static_cast<size_t>((c+nc)/2)] = ' ';
+      room[static_cast<size_t>(nr)][static_cast<size_t>(nc)] = ' ';
       cellStack.push({nr,nc});
     } else cellStack.pop();
   }
@@ -49,8 +49,8 @@ std::vector<fixed*> convertMap(const std::vector<std::vector<char>>& room, Engin
   std::vector<fixed*> map3d;
   map3d.reserve(1 + room.size() * room[0].size());
 
-  float x = room.size();
-  float y = room[0].size();
+  float x = static_cast<float>(room.size());
+  float y = static_cast<float>(room[0].size());
 
   fixed* floor = new fixed();
   floor->init("models/wall.obj", "textures/brick_Wall.png", app);

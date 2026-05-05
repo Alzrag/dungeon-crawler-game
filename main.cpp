@@ -31,8 +31,8 @@ int main() {
     std::cerr << "map generated" << std::endl;
 
     std::vector<fixed*> map = convertMap(mapTxt, app);
-    for (int i = 0; i < (int)map.size(); i++){
-      app.add(map[i]);
+    for (fixed* obj : map){
+      app.add(obj);
     }
     std::cerr << "map added to scene" << std::endl;
 

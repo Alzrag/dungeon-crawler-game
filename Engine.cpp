@@ -84,7 +84,7 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
   for (Gameobject* obj : sceneObjects){
     fixed* f = dynamic_cast<fixed*>(obj);
-    if (f) f->render(commandBuffer, pipelineLayout, static_cast<int>(currentFrame));
+    if (f) f->render(commandBuffer, pipelineLayout, currentFrame);
   } 
 
   vkCmdEndRenderPass(commandBuffer);

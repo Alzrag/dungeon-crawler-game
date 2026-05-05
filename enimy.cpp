@@ -16,7 +16,7 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine*
   std::uniform_int_distribution<int> posRow(0, (int)map->size()-1);
   std::uniform_int_distribution<int> posCol(0, (int)(*map)[0].size()-1);
   newPosition = {posRow(mt), posCol(mt), 1.0f};
-  while (mapIn->at((int)newPosition.x).at((int)newPosition.y)!=' '){
+  while (mapIn->at(static_cast<size_t>(newPosition.x)).at(static_cast<size_t>(newPosition.y))!=' '){
     newPosition = {posRow(mt), posCol(mt), 1.0f};
   }
   position=newPosition;
@@ -63,13 +63,13 @@ struct node {
   }
 };
 
-float distance(float x1,float x2,float y1, float y2){
-  return abs(x1-x2)+abs(y1-y2);
+float distance(int x1, int x2, int y1, int y2){
+  return static_cast<float>(abs(x1-x2) + abs(y1-y2));
 }
 
-bool isValid(int x,int y, const std::vector<std::vector<char>>& Maze){
-  if(y<0||y>=Maze.size()||x<0||x>=Maze[0].size()) return false;
-  if(Maze[y][x]=='#') return false;
+bool isValid(int x, int y, const std::vector<std::vector<char>>& Maze){
+  if(y<0 || static_cast<size_t>(y)>=Maze.size() || x<0 || static_cast<size_t>(x)>=Maze[0].size()) return false;
+  if(Maze[static_cast<size_t>(y)][static_cast<size_t>(x)]=='#') return false;
   return true;
 }
 
@@ -86,17 +86,17 @@ void reverse(Iterator begin, Iterator end) {
 }
 
 std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){ 
-  int rows = Maze.size();
-  int cols=Maze[0].size();
+  size_t rows = Maze.size();
+  size_t cols = Maze[0].size();
   node* start=nullptr;
   node* end(nullptr);
   std::vector<std::vector<node>> grid(rows, std::vector<node>(cols));
 
   //build grid
-  for (int y = 0; y<rows;y++){
-    for (int x = 0;x<cols;x++){
-      grid[y][x].y=y;
-      grid[y][x].x=x;
+  for (size_t y = 0; y < rows; y++){
+    for (size_t x = 0; x < cols; x++){
+      grid[y][x].y = static_cast<int>(y);
+      grid[y][x].x = static_cast<int>(x);
       if (Maze[y][x]=='E') start=&grid[y][x];
       if (Maze[y][x]=='S') end=&grid[y][x];
     }
@@ -108,17 +108,17 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
 
   while(!open.empty()){
     int bestOp=0;
-    for (int i=1;i<(int)open.size();i++){
-      if(open[i]->f<open[bestOp]->f){
-        bestOp=i;
+    for (int i = 1; static_cast<size_t>(i) < open.size(); i++){
+      if(open[static_cast<size_t>(i)]->f < open[static_cast<size_t>(bestOp)]->f){
+        bestOp = i;
       }
     }
-    node* current = open[bestOp];
+    node* current = open[static_cast<size_t>(bestOp)];
 
     if(current->x==end->x&&current->y==end->y){ 
       std::vector<glm::vec3> path;
       node* temp = current->parrent;
-      while(temp!=nullptr&&Maze[temp->y][temp->x]!='E'){
+      while(temp!=nullptr && Maze[static_cast<size_t>(temp->y)][static_cast<size_t>(temp->x)]!='E'){
         path.push_back({(float)temp->y, (float)temp->x, 1.0f});
         temp=temp->parrent;
       }
@@ -128,7 +128,7 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
 
     open.erase(open.begin()+bestOp);
     current->closed=true;
-    if(Maze[current->y][current->x]!='E'&&Maze[current->y][current->x]!='S')Maze[current->y][current->x]='V';
+    if(Maze[static_cast<size_t>(current->y)][static_cast<size_t>(current->x)]!='E'&&Maze[static_cast<size_t>(current->y)][static_cast<size_t>(current->x)]!='S')Maze[static_cast<size_t>(current->y)][static_cast<size_t>(current->x)]='V';
 
     int dx[]={0,0,-1,1};
     int dy[]={-1,1,0,0};
@@ -138,7 +138,7 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
       int ny=current->y+dy[i];
 
       if (isValid(nx, ny, Maze)){
-        node* neighbor =&grid[ny][nx]; 
+        node* neighbor = &grid[static_cast<size_t>(ny)][static_cast<size_t>(nx)]; 
         if (neighbor->closed){
           continue;
         }
@@ -154,7 +154,7 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
           }
           if(!allreadyOpened){
             open.push_back(neighbor);
-            if(Maze[neighbor->y][neighbor->x]!='E'&&Maze[neighbor->y][neighbor->x]!='S')Maze[neighbor->y][neighbor->x]='N';
+            if(Maze[static_cast<size_t>(neighbor->y)][static_cast<size_t>(neighbor->x)]!='E'&& Maze[static_cast<size_t>(neighbor->y)][static_cast<size_t>(neighbor->x)]!='S') Maze[static_cast<size_t>(neighbor->y)][static_cast<size_t>(neighbor->x)]='N';
           }
         }
       }
@@ -164,19 +164,19 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
 }
 
 std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
-  int rows = Maze.size();
-  int cols=Maze[0].size();
+  size_t rows = Maze.size();
+  size_t cols = Maze[0].size();
   node* start=nullptr;
   node* end(nullptr);
   std::vector<std::vector<node>> grid(rows, std::vector<node>(cols));
 
   //build grid
-  for (int y = 0; y<rows;y++){
-    for (int x = 0;x<cols;x++){
-      grid[y][x].y=y;
-      grid[y][x].x=x;
-      if (Maze[y][x]=='E') start=&grid[y][x];
-      if (Maze[y][x]=='S') end=&grid[y][x];
+  for (size_t y = 0; y < rows; y++){
+    for (size_t x = 0; x < cols; x++){
+      grid[y][x].y = static_cast<int>(y);
+      grid[y][x].x = static_cast<int>(x);
+      if (Maze[static_cast<size_t>(y)][static_cast<size_t>(x)]=='E') start=&grid[static_cast<size_t>(y)][static_cast<size_t>(x)];
+      if (Maze[static_cast<size_t>(y)][static_cast<size_t>(x)]=='S') end=&grid[static_cast<size_t>(y)][static_cast<size_t>(x)];
     }
   }
   if (start == nullptr || end == nullptr) return {};
@@ -185,9 +185,9 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
   open.push_back(start);
 
   while(!open.empty()){
-    int bestOp=0;
-    for (int i=1;i<(int)open.size();i++){
-      if(open[i]->f<open[bestOp]->f){
+    size_t bestOp = 0;
+    for (size_t i = 1; i < open.size(); i++){
+      if(open[i]->f < open[bestOp]->f){
         bestOp=i;
       }
     }
@@ -196,7 +196,7 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
     if(current->x==end->x&&current->y==end->y){ 
       std::vector<glm::vec3> path;
       node* temp = current->parrent;
-      while(temp!=nullptr&&Maze[temp->y][temp->x]!='E'){
+      while(temp!=nullptr&&Maze[static_cast<size_t>(temp->y)][static_cast<size_t>(temp->x)]!='E'){
         path.push_back({(float)temp->y, (float)temp->x, 1.0f});
         temp=temp->parrent;
       }
@@ -204,9 +204,9 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
       return path;
     }
 
-    open.erase(open.begin()+bestOp);
+    open.erase(open.begin()+static_cast<int>(bestOp));
     current->closed=true;
-    if(Maze[current->y][current->x]!='E'&&Maze[current->y][current->x]!='S')Maze[current->y][current->x]='V';
+    if(Maze[static_cast<size_t>(current->y)][static_cast<size_t>(current->x)]!='E'&&Maze[static_cast<size_t>(current->y)][static_cast<size_t>(current->x)]!='S')Maze[static_cast<size_t>(current->y)][static_cast<size_t>(current->x)]='V';
 
     int dx[]={0,0,-1,1};
     int dy[]={-1,1,0,0};
@@ -216,7 +216,7 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
       int ny=current->y+dy[i];
 
       if (isValid(nx, ny, Maze)){
-        node* neighbor =&grid[ny][nx]; 
+        node* neighbor = &grid[static_cast<size_t>(ny)][static_cast<size_t>(nx)]; 
         if (neighbor->closed){
           continue;
         }
@@ -232,7 +232,7 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
           }
           if(!allreadyOpened){
             open.push_back(neighbor);
-            if(Maze[neighbor->y][neighbor->x]!='E'&&Maze[neighbor->y][neighbor->x]!='S')Maze[neighbor->y][neighbor->x]='N';
+            if(Maze[static_cast<size_t>(neighbor->y)][static_cast<size_t>(neighbor->x)]!='E'&&Maze[static_cast<size_t>(neighbor->y)][static_cast<size_t>(neighbor->x)]!='S')Maze[static_cast<size_t>(neighbor->y)][static_cast<size_t>(neighbor->x)]='N';
           }
         }
       }
@@ -246,17 +246,16 @@ void enimy::move(){
     float dt=app->dt;
     if (!moving) {
       if (pathQueue.empty()) {
-        glm::vec3 target = newPosition;
         std::uniform_int_distribution<int> posRow(1, (int)map->size()-1);
         std::uniform_int_distribution<int> posCol(1, (int)(*map)[0].size()-1);
         glm::vec3 newDest = {(float)posRow(mt), (float)posCol(mt), 1.0f};
-        while (map->at((int)newDest.x).at((int)newDest.y) != ' '){
+        while (map->at(static_cast<size_t>(newDest.x)).at(static_cast<size_t>(newDest.y))){
           newDest = {(float)posRow(mt), (float)posCol(mt), 1.0f};
         }
         newPosition = newDest;
         std::vector<std::vector<char>> tempMap = *map;
-        tempMap.at((int)position.x).at((int)position.y) = 'E';
-        tempMap.at((int)newDest.x).at((int)newDest.y) = 'S';
+        tempMap.at(static_cast<size_t>(position.x)).at(static_cast<size_t>(position.y)) = 'E';
+        tempMap.at(static_cast<size_t>(newDest.x)).at(static_cast<size_t>(newDest.y)) = 'S';
 
         std::vector<glm::vec3> newPath = solveMaze(tempMap);
         for (auto& step: newPath){
@@ -287,8 +286,8 @@ void enimy::move(){
     if (!moving) {
       if (pathQueue.empty()) {
         std::vector<std::vector<char>> tempMap=*map;
-        tempMap.at((int)position.x).at((int)position.y) = 'E'; 
-        tempMap.at(static_cast<int>(app->cameraPos.x)).at(static_cast<int>(app->cameraPos.y)) = 'S';
+        tempMap.at(static_cast<size_t>(position.x)).at(static_cast<size_t>(position.y)) = 'E'; 
+        tempMap.at(static_cast<size_t>(app->cameraPos.x)).at(static_cast<size_t>(app->cameraPos.y)) = 'S';
         std::vector<glm::vec3> newPath = playerDistance(tempMap);
         for (auto& step: newPath){
           pathQueue.push_back(step);
@@ -320,8 +319,8 @@ void enimy::stateTransition(){
   std::string oldState = state;
 
   std::vector<std::vector<char>> tempMap = *map;
-  tempMap.at((int)position.x).at((int)position.y) = 'E';
-  tempMap.at(static_cast<int>(app->cameraPos.x)).at(static_cast<int>(app->cameraPos.y)) = 'S';
+  tempMap.at(static_cast<size_t>(position.x)).at(static_cast<size_t>(position.y)) = 'E';
+  tempMap.at(static_cast<size_t>(app->cameraPos.x)).at(static_cast<size_t>(app->cameraPos.y)) = 'S';
   int pdis = (int)playerDistance(tempMap).size();
 
   if (pdis <= 5){
