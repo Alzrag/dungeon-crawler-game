@@ -38,6 +38,8 @@ void Engine::remove(fixed* obj){
 }
 
 void Engine::framebufferResizeCallback(GLFWwindow* window, int width, int height){
+  width+=0;//i prevent warnings
+  height+=0;//i prevent warnings
   auto app = reinterpret_cast<Engine*>(glfwGetWindowUserPointer(window));
   app->framebufferResized=true;
 }
@@ -92,12 +94,12 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 }
 
 //queue families dertminte the order of commands sent
-Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
+Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice dev){
   QueueFamilyIndicies indices;
   uint32_t queueFamilyCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+  vkGetPhysicalDeviceQueueFamilyProperties(dev, &queueFamilyCount, nullptr);
   std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+  vkGetPhysicalDeviceQueueFamilyProperties(dev, &queueFamilyCount, queueFamilies.data());
 
   int i = 0;
   for (const auto& queueFamily : queueFamilies) {
@@ -106,7 +108,7 @@ Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
     }
  
     VkBool32 presentSupport = false;
-    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+    vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &presentSupport);
     if (presentSupport) {
       indices.presentFamily = i;
     }
@@ -119,22 +121,22 @@ Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice device){
   return indices;
 }
 
-Engine::SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice device){
+Engine::SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice dev){
   SwarpChainSupportDetails details;
 
   uint32_t formatCount;
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev, surface, &details.capabilities);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, nullptr);
   if (formatCount !=0){
     details.formats.resize(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(dev, surface, &formatCount, details.formats.data());
   }
   
   uint32_t presentModeCount;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &presentModeCount, nullptr);
   if (presentModeCount!=0){
     details.presentModes.resize(presentModeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &presentModeCount, details.presentModes.data());
   }
   return details;
 }  
@@ -164,10 +166,10 @@ void Engine::pickPhysicalDevice(){
   std::vector<VkPhysicalDevice> devices(deviceCount);//now that we know there s no error we can add them to a list
   vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
   std::multimap<int, VkPhysicalDevice> candidates;//sort them with a multimap ordred by their score
-  for  (const auto& device : devices){
-    if(!isDeviceSuitable(device)) continue;
-    int score = rateDeviceSuitability(device);
-    candidates.insert(std::make_pair(score, device));
+  for  (const auto& dev : devices){
+    if(!isDeviceSuitable(dev)) continue;
+    int score = rateDeviceSuitability(dev);
+    candidates.insert(std::make_pair(score, dev));
   }
   if (candidates.rbegin()->first>0){//if the best cant support vulkan non can
     physicalDevice = candidates.rbegin()->second;
@@ -176,14 +178,14 @@ void Engine::pickPhysicalDevice(){
   }
 }
 
-int Engine::rateDeviceSuitability(VkPhysicalDevice device){
+int Engine::rateDeviceSuitability(VkPhysicalDevice dev){
   //start be getting the properties and features of the device
   VkPhysicalDeviceProperties deviceProperties;
-  vkGetPhysicalDeviceProperties(device, &deviceProperties);
+  vkGetPhysicalDeviceProperties(dev, &deviceProperties);
   VkPhysicalDeviceFeatures deviceFeatures;
-  vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+  vkGetPhysicalDeviceFeatures(dev, &deviceFeatures);
   VkPhysicalDeviceMemoryProperties memoryProperties;
-  vkGetPhysicalDeviceMemoryProperties(device, &memoryProperties);
+  vkGetPhysicalDeviceMemoryProperties(dev, &memoryProperties);
 
   int score = 0;
   // if it cant do gemotiry shading it cant do what we need
@@ -268,23 +270,23 @@ int Engine::rateDeviceSuitability(VkPhysicalDevice device){
   return score;
 } 
 
-bool Engine::isDeviceSuitable(VkPhysicalDevice device){
-  QueueFamilyIndicies indices = findQueueFamilies(device);
-  bool extensionsSupported = checkDeviceExtensionSupport(device);
+bool Engine::isDeviceSuitable(VkPhysicalDevice dev){
+  QueueFamilyIndicies indices = findQueueFamilies(dev);
+  bool extensionsSupported = checkDeviceExtensionSupport(dev);
   bool swapChainAdequate = false;
   if (extensionsSupported){
-    SwarpChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+    SwarpChainSupportDetails swapChainSupport = querySwapChainSupport(dev);
     swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
   }
   return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
-bool Engine::checkDeviceExtensionSupport(VkPhysicalDevice device){
+bool Engine::checkDeviceExtensionSupport(VkPhysicalDevice dev){
   uint32_t extensionCount;
-  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+  vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, nullptr);
   
   std::vector<VkExtensionProperties> availibleExtensions(extensionCount);
-  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availibleExtensions.data());
+  vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, availibleExtensions.data());
 
   std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());//why not size?
   for (const auto& extension : availibleExtensions) {
@@ -362,8 +364,8 @@ void Engine::processInput() {
   double mx, my;
   glfwGetCursorPos(window, &mx, &my);
   static double lastX = mx, lastY = my;
-  float dx = (mx - lastX) * 0.1f;
-  float dy = (lastY - my) * 0.1f;
+  float dx = static_cast<float>((mx - lastX) * 0.1);
+  float dy = static_cast<float>((lastY - my) * 0.1);
   lastX = mx; lastY = my;
   cameraYaw   -= dx;
   cameraPitch  = glm::clamp(cameraPitch + dy, -89.0f, 89.0f);
@@ -750,7 +752,7 @@ void Engine::createDescriptorSets(){
     throw std::runtime_error("failed to allocate descriptor sets");
   }
 
-  for (size_t i =0;i<MAX_FRAMES_IN_FLIGHT;i++){
+  for (size_t i =0;i<(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT));i++){
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer=uniformBuffers[i];
     bufferInfo.offset=0;
@@ -787,10 +789,10 @@ void Engine::createDescriptorSets(){
 void Engine::createUniformBuffers(){
   VkDeviceSize buffersSize = sizeof(UniformBufferObject);
   uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-  uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-  uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+  uniformBuffersMemory.resize(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT));
+  uniformBuffersMapped.resize(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT));
 
-  for (size_t i = 0;i<MAX_FRAMES_IN_FLIGHT;i++){
+  for (size_t i = 0;i<(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT));i++){
     createBuffer(buffersSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
     vkMapMemory(device, uniformBuffersMemory[i],0,buffersSize,0,&uniformBuffersMapped[i]);
 
@@ -954,11 +956,11 @@ void Engine::createCommandBuffer(){
 }
 
 void Engine::createCommandPool(){
-  QueueFamilyIndicies QueueFamilyIndicies = findQueueFamilies(physicalDevice);
+  QueueFamilyIndicies QueueFamilyIndiciesl = findQueueFamilies(physicalDevice);
   VkCommandPoolCreateInfo poolInfo{};
   poolInfo.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   poolInfo.flags=VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  poolInfo.queueFamilyIndex=QueueFamilyIndicies.graphicsFamily.value();
+  poolInfo.queueFamilyIndex=QueueFamilyIndiciesl.graphicsFamily.value();
   if(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool)!=VK_SUCCESS){
     throw std::runtime_error("failed to create command pool");
   }
@@ -1315,9 +1317,9 @@ void Engine::createLogicalDevice() {
 //technically this next function exists in th4 code biut it is faster to write it ourselves then try t find and thenc all it 
 //in effect it does as the anem says creates our vulkan debug utils messenger extenion
 VkResult Engine::CreateDebugUtilsMessengerEXT(VkInstance instace, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger){
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+  auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instace, "vkCreateDebugUtilsMessengerEXT");
   if (func != nullptr){
-    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    return func(instace, pCreateInfo, pAllocator, pDebugMessenger);
   } else {
     return VK_ERROR_EXTENSION_NOT_PRESENT;//returns if issue loading func with this error
   }
@@ -1416,22 +1418,22 @@ void Engine::drawFrame(){
 void Engine::updateUniformBuffer(uint32_t currentImage){
   static auto startTime = std::chrono::high_resolution_clock::now();
   auto currentTime = std::chrono::high_resolution_clock::now();
-  float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+  [[maybe_unused]] float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
   UniformBufferObject ubo{};//TODO
   ubo.model=glm::mat4(1.0f);
   
   ubo.view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  ubo.proj=glm::perspective(glm::radians(45.0f), swapChainExtent.width/(float)swapChainExtent.height, 0.1f, 1000.0f);
+  ubo.proj=glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 1000.0f);
   ubo.proj[1][1]*=-1;
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
 //this is a functiont o detroy the beguv messagner extion layer basically a destructor with weird iplimention if i understand property 
-void Engine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator){
-  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");//i used the extension to destroy the extension
+void Engine::DestroyDebugUtilsMessengerEXT(VkInstance vkInstance, [[maybe_unused]] VkDebugUtilsMessengerEXT vkDebugMessenger, const VkAllocationCallbacks* pAllocator){
+  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(vkInstance, "vkDestroyDebugUtilsMessengerEXT");//i used the extension to destroy the extension
   if (func != nullptr){
-    func(instance,debugMessenger,pAllocator);
+    func(vkInstance,vkDebugMessenger,pAllocator);
   }
 }
 
@@ -1469,7 +1471,7 @@ void Engine::cleanup() {
     cleanupSwapChain();//framerbuffers and iamge views
 
     //timing and sync objects
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+    for (size_t i = 0; i <static_cast<size_t>(MAX_FRAMES_IN_FLIGHT); i++){
       vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
       vkDestroyFence(device, inFlightFences[i], nullptr);
     }
@@ -1478,7 +1480,7 @@ void Engine::cleanup() {
     }
   
     //UBO's and descriptions
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++){
+    for (size_t i = 0; i <static_cast<size_t>(MAX_FRAMES_IN_FLIGHT); i++){
         vkDestroyBuffer(device, uniformBuffers[i], nullptr);
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
     }

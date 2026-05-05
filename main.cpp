@@ -10,6 +10,7 @@ struct UpdateState {
 } gUpdateState;
 
 void gameUpdate(Engine& e) {
+  e.playerHealth+=0;//i prevent warnings
   for (int i = 0; i < gUpdateState.count; i++) {
     gUpdateState.enemies[i]->stateTransition();
   }
@@ -48,7 +49,6 @@ int main() {
     player.hasCollider = true;
     app.player = &player;
     app.add(&player);
-    int* playerhealth=&app.playerHealth;
 
     app.playerHealth=1000;
     for (int i = 0; i < 3; i++) {

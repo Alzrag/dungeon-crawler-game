@@ -166,7 +166,7 @@ $(FRAG_SPV): $(FRAG_SRC)
 # ── Main build ────────────────────────────────────────────────────────────────
 $(TARGET): $(OBJECTS) $(GLFW_LIB)
 ifeq ($(OS),Windows_NT)
-	-taskkill /F /IM $(TARGET) 2>nul
+	-cmd /c "taskkill /F /IM main.exe 2>nul & exit 0"
 endif
 	$(CXX) $(CPPVERSION) -o $@ $(OBJECTS) $(LDFLAGS)
 
@@ -175,7 +175,7 @@ endif
 
 clean:
 ifeq ($(OS),Windows_NT)
-	-del /Q main.exe main.o shaders\vert.spv shaders\frag.spv 2>NUL
+	-del /Q main.exe *.o shaders\vert.spv shaders\frag.spv 2>NUL
 	-del /Q external\glfw-3.4\build\src\libglfw3.a 2>NUL
 	-del /Q external\glfw-3.4\src\*.glfw.o 2>NUL
 	-del /Q "$(BUILD_OS_FILE)" 2>NUL

@@ -47,9 +47,9 @@ inline const std::string TEXTURE_PATH="textures/viking_room.png";
 inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};//holds our additional validation layers witch are largly all in a build int one by the used name
 
 #ifdef NDEBUG
-  const bool enableValidationLayers = false;
+  inline const bool enableValidationLayers = false;
 #else
-  const bool enableValidationLayers = true;
+  inline const bool enableValidationLayers = true;
 #endif
 
 class Engine {
