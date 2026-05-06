@@ -79,7 +79,7 @@ std::vector<fixed*> convertMap(const std::vector<std::vector<char>>& room, Engin
   floor->init("models/wall.obj", "textures/brick_Wall.png", app);
   floor->isWall = true;
   floor->hasCollider = false;
-  floor->Scale    = {x, y, 1.0f};
+  floor->Scale = {x, y, 1.0f};
   floor->Position = {x/2, y/2, -1.0f};
   map3d.push_back(floor);
 

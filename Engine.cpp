@@ -440,12 +440,12 @@ void Engine::processInput() {
   float dx = static_cast<float>((mx - lastX) * 0.1);
   float dy = static_cast<float>((lastY - my) * 0.1);
   lastX = mx; lastY = my;
-  cameraYaw   -= dx;
-  cameraPitch  = glm::clamp(cameraPitch + dy, -89.0f, 89.0f);
+  cameraYaw -= dx;
+  cameraPitch = glm::clamp(cameraPitch + dy, -89.0f, 89.0f);
   cameraFront = glm::normalize(glm::vec3(
-      cos(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch)),
-      sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch)),
-      sin(glm::radians(cameraPitch))
+    cos(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch)),
+    sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch)),
+    sin(glm::radians(cameraPitch))
   ));
 }
 
@@ -627,7 +627,7 @@ void Engine::loadTextureFromPath(const std::string& path, VkImage& outImage, VkD
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-  outView    = createImageView(outImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+  outView = createImageView(outImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
   outSampler = textureSampler; // reuse the engine's sampler — same settings
 }
 

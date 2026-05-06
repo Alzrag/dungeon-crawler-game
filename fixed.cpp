@@ -200,10 +200,10 @@ fixed& fixed::operator=(const fixed& other){
     engine->loadTextureFromPath(texturePath, localTextureImage,
     localTextureMemory, localTextureImageView, localTextureSampler);
   } else {
-    localTextureImage    = VK_NULL_HANDLE;
-    localTextureMemory   = VK_NULL_HANDLE;
+    localTextureImage = VK_NULL_HANDLE;
+    localTextureMemory = VK_NULL_HANDLE;
     localTextureImageView= VK_NULL_HANDLE;
-    localTextureSampler  = VK_NULL_HANDLE;
+    localTextureSampler = VK_NULL_HANDLE;
   }
   std::vector<VkDescriptorSetLayout> layouts(engine->MAX_FRAMES_IN_FLIGHT, engine->descriptorSetLayout);
   VkDescriptorSetAllocateInfo allocInfo{};

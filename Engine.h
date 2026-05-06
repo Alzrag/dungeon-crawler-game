@@ -1,8 +1,9 @@
 #pragma once
-//Core
-#include "GameObject.h"
+//Vulkan
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
+
+//GLFW
 #include <GLFW/glfw3.h>
 
 //std
@@ -24,18 +25,20 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 class fixed;
+
 //External
 #include <stb_image.h>
 #include <tiny_obj_loader.h>
 
 //Project Files
+#include "GameObject.h"
 #include "vertex_data.hpp"
 #include "helpers.h"
 #include "staticobject.h"
 
 
-inline const uint32_t WIDTH = 800;
-inline const uint32_t HEIGHT = 600;//really dont change window size its hard
+inline const uint32_t WIDTH = 1080;
+inline const uint32_t HEIGHT = 720;//really dont change window size its hard
 
 inline const std::string APPLICATIONNAME= "triangle application";
 inline const std::string ENGINENAME="DM Engine";
@@ -65,10 +68,10 @@ class Engine {
     float dt = 0.0f;
     Gameobject* player = nullptr;
     int playerHealth=100;
-    glm::vec3 cameraPos   = {1.0f, 1.0f, 0.0f};
+    glm::vec3 cameraPos = {1.0f, 1.0f, 0.0f};
     glm::vec3 cameraFront = {0.0f,  1.0f, 0.0f};
-    glm::vec3 cameraUp    = {0.0f,  0.0f, 1.0f};
-    float cameraYaw   = 90.0f;
+    glm::vec3 cameraUp = {0.0f,  0.0f, 1.0f};
+    float cameraYaw = 90.0f;
     float cameraPitch = 0.0f;
     void processInput();
     std::vector<Gameobject*> sceneObjects;
@@ -93,7 +96,7 @@ class Engine {
     VkDeviceMemory textureImageMemory;
     VkImageView textureImageView;
     std::vector<VkDescriptorSet> descriptorSets;
-    const std::vector<const char*> deviceExtensions = { //used for the set of nessisary extension for your gpu to be valid
+    const std::vector<const char*> deviceExtensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
     VkSwapchainKHR swapChain;
@@ -102,7 +105,8 @@ class Engine {
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
     VkRenderPass renderPass;
-    VkPipelineLayout pipelineLayout;
+   #include "GameObject.h"
+ VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;//ferb we did it
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
