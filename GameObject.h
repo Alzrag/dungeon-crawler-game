@@ -30,17 +30,42 @@ public:
 
   bool isWall = false;
 
+  /**
+   * @brief per frame update tick
+   *
+   * @param deltaTime eleapstd time in secound since last frame
+   */
   virtual void update(float deltaTime)=0;
 
+  /**
+   * @brief issues render commands
+   */
   virtual void render()=0;
 
+  /**
+   * @brief what to do on a collsiion 
+   *
+   * @param other the other object to preforn actions to
+   */
   virtual void onCollision(Gameobject* other) = 0;
 
+  /**
+   * @brief a initalization and set up function for more customization that the constructor
+   */
   virtual void init()=0;
 
+  /**
+   * @brief virtual distrcutor for later 
+   */
   virtual ~Gameobject();
 
+  /**
+   * @brief default connstructor initalizes transform and state members to safe defaults
+   */
   Gameobject();
 
+  /**
+   * @brief preforms a world space model matrix caluclation based on scale and roation value and th emth for a 4x4 matirx that vulkan uses in rendering
+   */
   glm::mat4 getModelMatrix() const;
 };

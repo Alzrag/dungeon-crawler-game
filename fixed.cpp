@@ -4,6 +4,15 @@
 #include "vertex_data.hpp"
 #include "vulkan/vulkan_core.h"
 
+/**
+ * @brief intiatlizes a scene objected called fixed as this was originally intended to be stationary but the logic turned out identical for a dynamic one
+ *
+ * hooks into the engine to read the file input for texture and model valudate them build the nesssary buffers then computes AABB boundign boxes and loads the object and sites texture 
+ *
+ * @param modelPath file path to the obj file 
+ * @param tPath path to the texture file 
+ * @param gameEngine the pointer to the engine to load within and hook into
+ */
 void fixed::init(const std::string& modelPath, const std::string& tPath, Engine& gameEngine){
   engineDevice = gameEngine.device;
   enginePool = gameEngine.descriptorPool;
@@ -77,6 +86,13 @@ void fixed::init(const std::string& modelPath, const std::string& tPath, Engine&
     }
 }
 
+/**
+ * @brief Issues the nessiary vulkan draw commands to the engine
+ *
+ * @param commandBuffer the command buffer to record its info into 
+ * @param pipelineLayout the popline layout to push constants to 
+ * @param frameIndex the current fram in flgiht frame index to know wher in the order to inject its self
+ */
 void fixed::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, uint32_t frameIndex){
   if (!hasModel) return;
 
@@ -98,6 +114,9 @@ void fixed::update(float) {}
 void fixed::render() {}
 void fixed::init() {}
 
+/**
+ * @brief destructor for fixed releaing all vulkan resorces from gpu and cpu and memory
+ */
 fixed::~fixed(){
   if(engineDevice==VK_NULL_HANDLE) return;
   if (!descriptorSets.empty() && enginePool != VK_NULL_HANDLE){
@@ -118,10 +137,20 @@ fixed::~fixed(){
   }
 }
 
+/**
+ * @brief the copy constructoor preforms a deep copy durring creation of anuther fixed game object.
+ *
+ * @param other the other fixed game object to pull from
+ */
 fixed::fixed(const fixed& other) {
   *this = other;
 }
 
+/**
+ * @brief the copy assignment operator releasing current vulkan process mirroring the distructor before doign a deep copy of anothers
+ *
+ * @param other the other fixed game object to pull from
+ */
 fixed& fixed::operator=(const fixed& other){
   if (this == &other) return *this;
   if(engineDevice!=VK_NULL_HANDLE){

@@ -1,5 +1,4 @@
 #pragma once
-
 //Core
 #include "GameObject.h"
 #include <vulkan/vulkan.h>
@@ -55,6 +54,11 @@ inline const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_vali
 class Engine {
   public:
     void (*onUpdate)(Engine&) = nullptr;
+    /**
+     * @brief registers a callback to be invoked once a fram durring main loop
+     *
+     * @param cb function pointed accepating a refrence to this engine instance
+     */
     void setUpdateCallback(void (*cb)(Engine&)) {
       onUpdate = cb;
     }

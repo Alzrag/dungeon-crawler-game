@@ -2,9 +2,20 @@
 #include "fixed.h"
 #include "Engine.h"
 
+/**
+ * @brief generates a 2-D maze grid using a random wlk and recusive back tracer effectivly a dpeth first search system then returns a grid of #'s' and then spaces for empy areas
+ *
+ * @param width number of cells along x axis(half of output)
+ * @param height number of cells along y axis (half of ourput)
+ * @param seed RNG seed for reproducable generation or random 
+ * @return themaze as a vector vecotr of chars
+ */
 std::vector<std::vector<char>> generate_map(int width, int height, unsigned int seed) {
   using namespace std;
   size_t rows = static_cast<size_t>(height) * 2 + 1;
+  /**
+   * @brief 
+   */
   size_t cols = static_cast<size_t>(width) * 2 + 1;
   vector<vector<char>> room(rows, vector<char>(cols, '#'));
   mt19937 gen(seed);
@@ -37,6 +48,11 @@ std::vector<std::vector<char>> generate_map(int width, int height, unsigned int 
   return room;
 }
 
+/**
+ * @brief prints the mazxe as viewed from top down in ASCII
+ *
+ * @param room the maze to print
+ */
 void print_map(const std::vector<std::vector<char>>& room){
   std::cout << "=== Top-Down Map ===\n";
   for(const auto& row:room){
@@ -45,6 +61,13 @@ void print_map(const std::vector<std::vector<char>>& room){
   }
 }
 
+/**
+ * @brief converts the 2d maze generated to a list of heap-aloacted fixed objects and creates a floor tile
+ *
+ * @param room the maze 
+ * @param app the engine to render into 
+ * @return the vector of pointers to the new heap-aloacted fixed objects.
+ */
 std::vector<fixed*> convertMap(const std::vector<std::vector<char>>& room, Engine& app){
   std::vector<fixed*> map3d;
   map3d.reserve(1 + room.size() * room[0].size());

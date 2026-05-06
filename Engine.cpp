@@ -9,24 +9,43 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+/**
+ * @brief intializes the vulkan engine basically a call back to initVulkan 
+ */
 void Engine::init(){
   initVulkan();
 }
 
+/**
+ * @brief runthe main render loop or at least starts with clean up on exit
+ */
 void Engine::loop(){
   mainLoop();
   cleanup();
 }
 
+/**
+ * @brief start up sequnce for the above 
+ */
 void Engine::run() {
   init();
   loop();
 } 
 
+/**
+ * @brief Adds a fixed oject to the scene object list 
+ *
+ * @param obj the adress of the fixed obect to be added 
+ */
 void Engine::add(fixed* obj){
   sceneObjects.push_back(obj);
 }
 
+/**
+ * @brief removes a fixed scee object for the list using swap and pop logic 
+ *
+ * @param obj pointed to the fixed object to remove 
+ */
 void Engine::remove(fixed* obj){
   for (size_t i = 0;i<sceneObjects.size();i++){
     if (obj == sceneObjects[i]){
@@ -37,6 +56,15 @@ void Engine::remove(fixed* obj){
   }
 }
 
+/**
+ * @brief GLFW frame buffer resize callback 
+ *
+ *  set the fram buffer resized flag on the engine signaling the swa chain to be recreated whenev the window changes size 
+ *
+ * @param window the GLFW window
+ * @param maybe_unused width new frmabuffers dwith in pixels 
+ * @param maybe_unused height new framebuffers height in pixels
+ */
 void Engine::framebufferResizeCallback(GLFWwindow* window, [[maybe_unused]] int width, [[maybe_unused]] int height){
   width+=0;//i prevent warnings
   height+=0;//i prevent warnings
@@ -44,6 +72,12 @@ void Engine::framebufferResizeCallback(GLFWwindow* window, [[maybe_unused]] int 
   app->framebufferResized=true;
 }
 
+/**
+ * @brief records all rendering commands for a single frame into a command buffer 
+ *
+ * @param commandBuffer the vulkan command buffer to write into
+ * @param imageIndex index of the swap-chain frambuffer to target 
+ */
 void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex){
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -121,6 +155,12 @@ Engine::QueueFamilyIndicies Engine::findQueueFamilies(VkPhysicalDevice dev){
   return indices;
 }
 
+/**
+ * @brief Queries swap chain chapabilities supported formats and present modes of the device
+ *
+ * @param dev phsical device 
+ * @return a SwarpChainSupportDetails struct with the above details 
+ */
 Engine::SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice dev){
   SwarpChainSupportDetails details;
 
@@ -141,6 +181,12 @@ Engine::SwarpChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice 
   return details;
 }  
 
+/**
+ * @brief chooses the swap chain image extent the best matches the ucrrent window size 
+ *
+ * @param capabilities surface capabilities reported by the physical device 
+ * @return the chosen VkExtent2D for swap chain image slike textures 
+ */
 VkExtent2D Engine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities){
   if(capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()){//if not wayland
     return capabilities.currentExtent;
@@ -156,6 +202,9 @@ VkExtent2D Engine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities
   }
 }
 
+/**
+ * @brief a long aglorithim that weights components and capabilities and secs to determine the best gpu on a device to use
+ */
 void Engine::pickPhysicalDevice(){
   physicalDevice = VK_NULL_HANDLE;//hold current phsycial device
   uint32_t deviceCount =0;//numbers of availbile vulkan gpu's
@@ -178,6 +227,12 @@ void Engine::pickPhysicalDevice(){
   }
 }
 
+/**
+ * @brief computes the suitability score for the above function to use in choosing 
+ *
+ * @param dev the physical device 
+ * @return an integer score higher is better 
+ */
 int Engine::rateDeviceSuitability(VkPhysicalDevice dev){
   //start be getting the properties and features of the device
   VkPhysicalDeviceProperties deviceProperties;
@@ -270,6 +325,12 @@ int Engine::rateDeviceSuitability(VkPhysicalDevice dev){
   return score;
 } 
 
+/**
+ * @brief Determines weather a phsiscla device meets the minimum specificsations and supports the nessisary functions 
+ *
+ * @param dev the physical device 
+ * @return a bool true if it support false if it does not 
+ */
 bool Engine::isDeviceSuitable(VkPhysicalDevice dev){
   QueueFamilyIndicies indices = findQueueFamilies(dev);
   bool extensionsSupported = checkDeviceExtensionSupport(dev);
@@ -281,6 +342,12 @@ bool Engine::isDeviceSuitable(VkPhysicalDevice dev){
   return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
+/**
+ * @brief a follow up to the above checjing the extension support of the device 
+ *
+ * @param dev the physical device 
+ * @return a bool of true if its upports false if it does not 
+ */
 bool Engine::checkDeviceExtensionSupport(VkPhysicalDevice dev){
   uint32_t extensionCount;
   vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionCount, nullptr);
@@ -295,6 +362,9 @@ bool Engine::checkDeviceExtensionSupport(VkPhysicalDevice dev){
   return requiredExtensions.empty();
 }
 
+/**
+ * @brief creates the vulkan instance with meta data about the abplication and requried extensions 
+ */
 void Engine::createInstance() {
   if (enableValidationLayers && !checkValidationLayerSupport(validationLayers)){
     throw std::runtime_error("Validation layers requested, but not availible!");
@@ -349,6 +419,9 @@ void Engine::createInstance() {
   }
 } 
 
+/**
+ * @brief a heler funciton for the main loop that is a lsitneer for input WASD and mouse move for now
+ */
 void Engine::processInput() {
   float speed = 0.05f;
   glm::vec3 flatFront = glm::normalize(glm::vec3(cameraFront.x, cameraFront.y, 0.0f));
@@ -376,6 +449,12 @@ void Engine::processInput() {
   ));
 }
 
+/**
+ * @brief the actual raw intialization of the system
+ *
+ * creates GLFW window, calls all subinitiatizations in order(intance->syncobjects)
+ *
+ */
 void Engine::initVulkan() {
   glfwInit();//initialize glfw library
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);//dont use opengl use vulkan
@@ -410,6 +489,13 @@ void Engine::initVulkan() {
   createSyncObjects();
 }
 
+/**
+ * @brief Loads a OBJ model from a file into vertex and index arrays using tinyobjloader also handles duplicate verticies using hashmaps 
+ *
+ * @param path File path to .obj model
+ * @param outVertices output vector of verticies 
+ * @param outIndices output vector of index data
+ */
 void Engine::loadModel(const std::string& path, std::vector<Vertex>& outVertices, std::vector<uint32_t>& outIndices) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;

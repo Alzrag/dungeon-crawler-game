@@ -6,6 +6,13 @@
 std::random_device rd;
 std::mt19937 mt(rd());
 
+/**
+ * @brief constrcuts an enimy placing it at a random open spot in the maze 
+ *
+ * @param vector the map of the ascii grid for logic later 
+ * @param object the object to use as a base 
+ * @param game the engine to hook into
+ */
 enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine* game){
   app = game;
   level=1;
@@ -28,15 +35,28 @@ enimy::enimy(std::vector<std::vector<char>>* mapIn, const fixed& object, Engine*
   state="wander";
 }
 
+/**
+ * @brief reduces the enimys healthy by a givin negative amount
+ *
+ * @param amount the amount to change the helath by negitive to take damgae positive to heal
+ */
 void enimy::takeDamage(int amount){
   health+=amount;
 }
 
+/**
+ * @brief applies the enimys damage to the player
+ */
 void enimy::hurt(){
   app->playerHealth+=damage;
   std::cout<<"you have been hurt your health is now: "<<app->playerHealth<<std::endl;
 }
 
+/**
+ * @class node
+ * @brief a structure used to hold data for prcoessing the maze durring A* navigation and enimy path finding
+ *
+ */
 struct node {
   int x,y;
   float f,g,h;
@@ -63,16 +83,40 @@ struct node {
   }
 };
 
+/**
+ * @brief a distance calculator calcuating along the maze between to points
+ *
+ * @param x1 x cordinate 1 
+ * @param x2  x cordianate 2 
+ * @param y1 y cordinate 1 
+ * @param y2 y cordianate 2
+ * @return returns a float of the distance along the baze between to points
+ */
 float distance(int x1, int x2, int y1, int y2){
   return static_cast<float>(abs(x1-x2) + abs(y1-y2));
 }
 
+/**
+ * @brief checks if the cadinatal positions form a node are valid or invalud
+ *
+ * @param x x positon of target node 
+ * @param y y poisiotn of target node 
+ * @param Maze the maze ascii 
+ * @return bool if it is a wall or not
+ */
 bool isValid(int x, int y, const std::vector<std::vector<char>>& Maze){
   if(y<0 || static_cast<size_t>(y)>=Maze.size() || x<0 || static_cast<size_t>(x)>=Maze[0].size()) return false;
   if(Maze[static_cast<size_t>(y)][static_cast<size_t>(x)]=='#') return false;
   return true;
 }
 
+/**
+ * @brief a fucntion to revese a vecotr of anything givin its start and end 
+ *
+ * @tparam Iterator the type of the vecotr 
+ * @param begin the begining index 
+ * @param end  the ending index 
+ */
 template <typename Iterator>
 void reverse(Iterator begin, Iterator end) {
   --end;
@@ -85,6 +129,12 @@ void reverse(Iterator begin, Iterator end) {
   }
 }
 
+/**
+ * @brief finds the path between two points with A*
+ *
+ * @param Maze ascii of the maze 
+ * @return a vector of posiotns to deque through
+ */
 std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){ 
   size_t rows = Maze.size();
   size_t cols = Maze[0].size();
@@ -163,6 +213,12 @@ std::vector<glm::vec3> solveMaze(std::vector<std::vector<char>>& Maze){
   return {};
 }
 
+/**
+ * @brief same as aboce but he target position is allways the players positon 
+ *
+ * @param Maze the ascii of the maze for logic 
+ * @return the vector to be dequed through to reach players position
+ */
 std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
   size_t rows = Maze.size();
   size_t cols = Maze[0].size();
@@ -241,6 +297,9 @@ std::vector<glm::vec3> playerDistance(std::vector<std::vector<char>>& Maze){
   return {};
 }
 
+/**
+ * @brief moves tghe enimy one set at a time so it doesnt go through walls movmeent is broken up by delta time and calls the correct functiont o identify target path 
+ */
 void enimy::move(){
   if (state == "wander"){
     float dt=app->dt;
@@ -249,7 +308,7 @@ void enimy::move(){
         std::uniform_int_distribution<int> posRow(1, (int)map->size()-1);
         std::uniform_int_distribution<int> posCol(1, (int)(*map)[0].size()-1);
         glm::vec3 newDest = {(float)posRow(mt), (float)posCol(mt), 1.0f};
-        while (map->at(static_cast<size_t>(newDest.x)).at(static_cast<size_t>(newDest.y))){
+        while (map->at(static_cast<size_t>(newDest.x)).at(static_cast<size_t>(newDest.y)) != ' '){
           newDest = {(float)posRow(mt), (float)posCol(mt), 1.0f};
         }
         newPosition = newDest;
@@ -315,6 +374,9 @@ void enimy::move(){
   }
 }
 
+/**
+ * @brief evalautes the ais distance from the player to detrmine its stae form wander to chase anf inaly damge as it gets closer to the player.
+ */
 void enimy::stateTransition(){
   std::string oldState = state;
 

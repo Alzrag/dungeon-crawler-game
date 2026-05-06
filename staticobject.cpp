@@ -1,6 +1,12 @@
 #include "staticobject.h"
 #include "GameObject.h"
 
+/**
+ * @brief per frame update logic calls nessary behavior for colsuions based on relitive need for or nor for having a colider 
+ *
+ * @param maybe_unused 
+ * @param sceneObjects 
+ */
 void static_object::update([[maybe_unused]] float deltaTime, std::vector<Gameobject*>& sceneObjects){
   if (!hasCollider){
     return;
@@ -17,11 +23,22 @@ void static_object::update([[maybe_unused]] float deltaTime, std::vector<Gameobj
   }
 }
 
+/**
+ * @brief prevent warnings with override and virtual
+ *
+ * @param maybe_unused 
+ */
 void static_object::update([[maybe_unused]] float deltaTime) {}
 
+/**
+ * @brief checks if it is in the AABB of anuther fixed object to detect a collision
+ *
+ * @param other the other game object to check against 
+ * @return bool of is colidng or not
+ */
 bool static_object::checkAABB(Gameobject* other){
-  glm::vec3 selfMin  = aabbMin * Scale + Position;
-  glm::vec3 selfMax  = aabbMax * Scale + Position;
+  glm::vec3 selfMin = aabbMin * Scale + Position;
+  glm::vec3 selfMax = aabbMax * Scale + Position;
   glm::vec3 otherMin = other->aabbMin * other->Scale + other->Position;
   glm::vec3 otherMax = other->aabbMax * other->Scale + other->Position;
   if (selfMax.x < otherMin.x) return false;
@@ -33,24 +50,29 @@ bool static_object::checkAABB(Gameobject* other){
   return true;
 }
 
+/**
+ * @brief what to do on collsion for now its just rebound form the object could be damge or what ever basically only works if the other thing is s wall send this back
+ *
+ * @param other the other game object to chech against
+ */
 void static_object::onCollision(Gameobject* other){
   if (other->isWall) return;
   if (!this->isWall) return;
 
-  glm::vec3 selfMin  = aabbMin * Scale + Position;
-  glm::vec3 selfMax  = aabbMax * Scale + Position;
+  glm::vec3 selfMin = aabbMin * Scale + Position;
+  glm::vec3 selfMax = aabbMax * Scale + Position;
   glm::vec3 otherMin = other->aabbMin * other->Scale + other->Position;
   glm::vec3 otherMax = other->aabbMax * other->Scale + other->Position;
 
-  glm::vec3 selfCenter  = (selfMin + selfMax) * 0.5f;
+  glm::vec3 selfCenter = (selfMin + selfMax) * 0.5f;
   glm::vec3 otherCenter = (otherMin + otherMax) * 0.5f;
   glm::vec3 dir = otherCenter - selfCenter;
 
-  float overlapX  = selfMax.x  - otherMin.x;
+  float overlapX = selfMax.x  - otherMin.x;
   float overlapNX = otherMax.x - selfMin.x;
-  float overlapY  = selfMax.y  - otherMin.y;
+  float overlapY = selfMax.y  - otherMin.y;
   float overlapNY = otherMax.y - selfMin.y;
-  float overlapZ  = selfMax.z  - otherMin.z;
+  float overlapZ = selfMax.z  - otherMin.z;
   float overlapNZ = otherMax.z - selfMin.z;
 
   float minOverlap = overlapX;
@@ -78,4 +100,7 @@ void static_object::onCollision(Gameobject* other){
   other->Position += correction;
 }
 
+/**
+ * @brief virtual destructor no vulkan resorces are owned yet
+ */
 static_object::~static_object() {}
